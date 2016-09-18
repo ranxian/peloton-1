@@ -2,7 +2,7 @@
 -----------------
 [![GitHub license](https://img.shields.io/badge/license-apache-green.svg?style=flat)](https://www.apache.org/licenses/LICENSE-2.0)
 [![Version](https://img.shields.io/badge/version-0.0.3-red.svg)](http://pelotondb.org/)
-[![Travis Status](https://travis-ci.org/jarulraj/peloton.svg?branch=master)](https://travis-ci.org/jarulraj/peloton#)
+[![Travis Status](https://travis-ci.org/jarulraj/peloton.svg?branch=master)](https://travis-ci.org/jarulraj/peloton)
 [![Jenkins Status](http://jenkins.db.cs.cmu.edu:8080/job/Peloton-jarulraj/badge/icon)](http://jenkins.db.cs.cmu.edu:8080/job/Peloton-jarulraj/)
 [![Join the chat at https://gitter.im/cmu-db/peloton](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/cmu-db/peloton?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
