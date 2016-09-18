@@ -21,7 +21,7 @@
 #include <ctime>
 #include <cassert>
 #include <thread>
-#include <algorithm>
+#include <numeric>
 
 #include "common/timer.h"
 #include "common/types.h"

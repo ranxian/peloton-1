@@ -16,6 +16,7 @@
 #include <sys/mman.h>
 #include <algorithm>
 #include <dirent.h>
+#include <numeric>
 
 #include "catalog/manager.h"
 #include "catalog/schema.h"

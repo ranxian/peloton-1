@@ -13,6 +13,7 @@
 
 #include <cfloat>
 #include <limits>
+#include <random>
 
 #include "common/harness.h"
 

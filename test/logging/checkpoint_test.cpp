@@ -11,6 +11,8 @@
 //===----------------------------------------------------------------------===//
 
 
+#include <numeric>
+
 #include "common/harness.h"
 #include "logging/checkpoint.h"
 #include "logging/logging_util.h"

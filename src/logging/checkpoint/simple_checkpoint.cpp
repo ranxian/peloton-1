@@ -15,6 +15,7 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <stdio.h>
+#include <numeric>
 
 #include "logging/checkpoint/simple_checkpoint.h"
 #include "logging/loggers/wal_frontend_logger.h"

@@ -19,6 +19,7 @@
 #include <iostream>
 #include <ctime>
 #include <cstring>
+#include <random>
 
 #include "benchmark/tpcc/tpcc_loader.h"
 #include "benchmark/tpcc/tpcc_configuration.h"
