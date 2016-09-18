@@ -82,6 +82,9 @@ static void ValidateOperator(const configuration &state) {
       case OPERATOR_TYPE_INSERT:
         LOG_INFO("%s : INSERT", "operator_type ");
         break;
+      case OPERATOR_TYPE_JOIN:
+        LOG_INFO("%s : JOIN", "operator_type ");
+        break;
       default:
         break;
     }
@@ -158,7 +161,7 @@ static void ValidateSelectivity(const configuration &state) {
 }
 
 static void ValidateExperiment(const configuration &state) {
-  if (state.experiment_type <= 0 || state.experiment_type > 1) {
+  if (state.experiment_type <= 0 || state.experiment_type > 2) {
     LOG_ERROR("Invalid experiment_type :: %d", state.experiment_type);
     exit(EXIT_FAILURE);
   }

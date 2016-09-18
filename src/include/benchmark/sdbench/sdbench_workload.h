@@ -28,7 +28,16 @@ void RunQuery(const std::vector<oid_t>& tuple_key_attrs,
 
 void RunInsertTest();
 
+void RunJoinTest(const std::vector<oid_t> &left_table_tuple_key_attrs,
+                 const std::vector<oid_t> &left_table_index_key_attrs,
+                 const std::vector<oid_t> &right_table_tuple_key_attrs,
+                 const std::vector<oid_t> &right_table_index_key_attrs,
+                 const oid_t left_table_join_column,
+                 const oid_t right_table_join_column);
+
 void RunAdaptExperiment();
+
+void RunQueryExperiment();
 
 }  // namespace sdbench
 }  // namespace benchmark
