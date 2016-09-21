@@ -35,9 +35,9 @@ void Usage() {
       "   -w --write_ratio       :  Fraction of writes\n"
       "   -g --tuples_per_tg     :  # of tuples per tilegroup\n"
       "   -y --hybrid_scan_type  :  hybrid scan type\n"
-      "   -t --phase-length      :  Length of a phase\n"
-      "   -q --total-ops         :  Total # of ops\n"
-      "   -f --full-indexes      :  Only use full indexes\n"
+      "   -t --phase_length      :  Length of a phase\n"
+      "   -q --total_ops         :  Total # of ops\n"
+      "   -f --index_usage_type  :  Types of indexes used\n"
   );
   exit(EXIT_FAILURE);
 }
@@ -53,9 +53,9 @@ static struct option opts[] = {
     {"write_ratio", optional_argument, NULL, 'w'},
     {"tuples_per_tg", optional_argument, NULL, 'g'},
     {"hybrid_scan_type", optional_argument, NULL, 'y'},
-    {"phase-length", optional_argument, NULL, 't'},
-    {"total-ops", optional_argument, NULL, 'q'},
-    {"full-indexes", optional_argument, NULL, 'f'},
+    {"phase_length", optional_argument, NULL, 't'},
+    {"total_ops", optional_argument, NULL, 'q'},
+    {"index_usage_type", optional_argument, NULL, 'f'},
     {NULL, 0, NULL, 0}
 };
 
@@ -196,8 +196,27 @@ static void ValidateTuplesPerTileGroup(const configuration &state) {
   LOG_INFO("%s : %d", "tuples_per_tilegroup", state.tuples_per_tilegroup);
 }
 
-static void ValidateOnlyUseFullIndexes(const configuration &state) {
-  LOG_INFO("%s : %d", "only_use_full_indexes", state.only_use_full_indexes);
+static void ValidateIndexUsageType(const configuration &state) {
+  if (state.index_usage_type < 1 || state.index_usage_type > 3) {
+      LOG_ERROR("Invalid index_usage_type :: %d", state.index_usage_type);
+      exit(EXIT_FAILURE);
+    } else {
+      switch (state.index_usage_type) {
+        case INDEX_USAGE_TYPE_INCREMENTAL:
+          LOG_INFO("%s : INCREMENTAL", "index_usage_type ");
+          break;
+        case INDEX_USAGE_TYPE_FULL:
+          LOG_INFO("%s : FULL", "index_usage_type ");
+          break;
+        case INDEX_USAGE_TYPE_NEVER:
+          LOG_INFO("%s : NEVER", "index_usage_type ");
+          break;
+        default:
+          break;
+      }
+    }
+
+  LOG_INFO("%s : %d", "index_usage_type", state.index_usage_type);
 }
 
 int orig_scale_factor;
@@ -225,7 +244,7 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
 
   state.adapt_layout = false;
   state.adapt_indexes = true;
-  state.only_use_full_indexes = false;
+  state.index_usage_type = INDEX_USAGE_TYPE_INCREMENTAL;
 
   // Parse args
   while (1) {
@@ -272,7 +291,7 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
         state.total_ops = atol(optarg);
         break;
       case 'f':
-        state.only_use_full_indexes = atoi(optarg);
+        state.index_usage_type = (IndexUsageType) atoi(optarg);
         break;
 
       case 'h':
@@ -285,23 +304,21 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
     }
   }
 
-  if (state.experiment_type == EXPERIMENT_TYPE_INVALID) {
-    // Print configuration
-    ValidateLayout(state);
-    ValidateHybridScanType(state);
-    ValidateOperator(state);
-    ValidateSelectivity(state);
-    ValidateProjectivity(state);
-    ValidateScaleFactor(state);
-    ValidateColumnCount(state);
-    ValidateWriteRatio(state);
-    ValidateTuplesPerTileGroup(state);
-    ValidateOnlyUseFullIndexes(state);
-
-    LOG_INFO("%s : %lu", "total_ops", state.total_ops);
-  } else {
+  // Validate and Print configuration
+  if (state.experiment_type != EXPERIMENT_TYPE_INVALID) {
     ValidateExperiment(state);
   }
+
+  ValidateLayout(state);
+  ValidateHybridScanType(state);
+  ValidateOperator(state);
+  ValidateSelectivity(state);
+  ValidateProjectivity(state);
+  ValidateScaleFactor(state);
+  ValidateColumnCount(state);
+  ValidateWriteRatio(state);
+  ValidateTuplesPerTileGroup(state);
+  ValidateIndexUsageType(state);
 
   // cache orig scale factor
   orig_scale_factor = state.scale_factor;

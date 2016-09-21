@@ -41,6 +41,14 @@ enum ExperimentType {
   EXPERIMENT_TYPE_QUERY = 2,
 };
 
+enum IndexUsageType {
+  INDEX_USAGE_TYPE_INVALID = 0,
+
+  INDEX_USAGE_TYPE_INCREMENTAL = 1, // use partial indexes
+  INDEX_USAGE_TYPE_FULL = 2, // use full indexes
+  INDEX_USAGE_TYPE_NEVER = 3 // don't use indexes (no online tuning)
+};
+
 extern int orig_scale_factor;
 
 class configuration {
@@ -83,8 +91,8 @@ class configuration {
   // Adapt the indexes ?
   bool adapt_indexes;
 
-  // Only use fully materialized indexes ?
-  bool only_use_full_indexes;
+  // What kind of indexes can be used ?
+  IndexUsageType index_usage_type;
 
 };
 

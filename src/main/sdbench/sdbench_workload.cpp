@@ -351,6 +351,14 @@ std::shared_ptr<index::Index> PickIndex(storage::DataTable *table,
 
   oid_t index_count = table->GetIndexCount();
 
+  // Empty index pointer
+  std::shared_ptr<index::Index> index;
+
+  // Can't use indexes => return empty index
+  if (state.index_usage_type == INDEX_USAGE_TYPE_NEVER) {
+    return index;
+  }
+
   // Go over all indices
   bool query_index_found = false;
   oid_t index_itr = 0;
@@ -366,8 +374,8 @@ std::shared_ptr<index::Index> PickIndex(storage::DataTable *table,
       continue;
     }
 
-    // Fully constructed or not ?
-    if (state.only_use_full_indexes == true) {
+    // Can only use full indexes ?
+    if (state.index_usage_type == INDEX_USAGE_TYPE_FULL) {
       auto indexed_tg_count = index->GetIndexedTileGroupOffset();
       auto table_tg_count = table->GetTileGroupCount();
 
@@ -386,8 +394,6 @@ std::shared_ptr<index::Index> PickIndex(storage::DataTable *table,
     // update index count
     index_count = table->GetIndexCount();
   }
-
-  std::shared_ptr<index::Index> index;
 
   // Found index
   if (query_index_found == true) {
