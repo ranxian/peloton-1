@@ -45,7 +45,7 @@ namespace sdbench {
 std::unique_ptr<storage::DataTable> sdbench_table;
 
 void CreateTable() {
-  const oid_t col_count = state.column_count + 1;
+  const oid_t col_count = state.attribute_count + 1;
   const bool is_inlined = true;
 
   // Create schema first
@@ -75,7 +75,7 @@ void CreateTable() {
 }
 
 void LoadTable() {
-  const oid_t col_count = state.column_count + 1;
+  const oid_t col_count = state.attribute_count + 1;
   const int tuple_count = state.scale_factor * state.tuples_per_tilegroup;
 
   auto table_schema = sdbench_table->GetSchema();

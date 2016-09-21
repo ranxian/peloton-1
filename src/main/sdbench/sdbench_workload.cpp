@@ -79,8 +79,11 @@ namespace benchmark {
 namespace sdbench {
 
 // Function definitions
-std::shared_ptr<index::Index> PickIndex(storage::DataTable *table,
+static std::shared_ptr<index::Index> PickIndex(storage::DataTable *table,
                                         std::vector<oid_t> query_attrs);
+
+static void QueryHelper(const std::vector<oid_t> &tuple_key_attrs,
+                 const std::vector<oid_t> &index_key_attrs);
 
 // Tuple id counter
 oid_t sdbench_tuple_counter = -1000000;
@@ -91,7 +94,7 @@ static int GetLowerBound() {
   int tuple_count = state.scale_factor * state.tuples_per_tilegroup;
   int predicate_offset = 0.1 * tuple_count;
 
-  LOG_INFO("Tuple count : %d", tuple_count);
+  LOG_TRACE("Tuple count : %d", tuple_count);
 
   int lower_bound = predicate_offset;
   return lower_bound;
@@ -106,7 +109,7 @@ static int GetUpperBound() {
   return upper_bound;
 }
 
-expression::AbstractExpression *CreateSimpleScanPredicate(
+static expression::AbstractExpression *CreateSimpleScanPredicate(
     oid_t key_attr, ExpressionType expression_type, oid_t constant) {
   // First, create tuple value expression.
   oid_t left_tuple_idx = 0;
@@ -133,7 +136,7 @@ expression::AbstractExpression *CreateSimpleScanPredicate(
  * will be attr >= LOWER_BOUND AND attr < UPPER_BOUND.
  * LOWER_BOUND and UPPER_BOUND are determined by the selectivity config.
  */
-expression::AbstractExpression *CreateScanPredicate(
+static expression::AbstractExpression *CreateScanPredicate(
     std::vector<oid_t> key_attrs) {
   const int tuple_start_offset = GetLowerBound();
   const int tuple_end_offset = GetUpperBound();
@@ -171,7 +174,7 @@ expression::AbstractExpression *CreateScanPredicate(
   return predicate;
 }
 
-void CreateIndexScanPredicate(std::vector<oid_t> key_attrs,
+static void CreateIndexScanPredicate(std::vector<oid_t> key_attrs,
                               std::vector<oid_t> &key_column_ids,
                               std::vector<ExpressionType> &expr_types,
                               std::vector<Value> &values) {
@@ -200,7 +203,7 @@ void CreateIndexScanPredicate(std::vector<oid_t> key_attrs,
  * @param column_ids Column ids to added to the result tile after scan.
  * @return A hybrid scan executor based on the key columns.
  */
-std::shared_ptr<planner::HybridScanPlan> CreateHybridScanPlan(
+static std::shared_ptr<planner::HybridScanPlan> CreateHybridScanPlan(
     const std::vector<oid_t> &tuple_key_attrs,
     const std::vector<oid_t> &index_key_attrs,
     const std::vector<oid_t> &column_ids) {
@@ -230,13 +233,17 @@ std::shared_ptr<planner::HybridScanPlan> CreateHybridScanPlan(
     hybrid_scan_type = HYBRID_SCAN_TYPE_HYBRID;
   }
 
-  LOG_INFO("Hybrid scan type : %d", hybrid_scan_type);
+  LOG_TRACE("Hybrid scan type : %d", hybrid_scan_type);
 
   std::shared_ptr<planner::HybridScanPlan> hybrid_scan_node(
       new planner::HybridScanPlan(sdbench_table.get(), predicate, column_ids,
                                   index_scan_desc, hybrid_scan_type));
 
   return hybrid_scan_node;
+}
+
+static double GetRandomSample(){
+  return (double)rand() / RAND_MAX;
 }
 
 std::ofstream out("outputfile.summary");
@@ -250,19 +257,21 @@ UNUSED_ATTRIBUTE static void WriteOutput(double duration) {
   duration *= 1000;
 
   LOG_INFO("----------------------------------------------------------");
-  LOG_INFO("%d %d %.3lf %.3lf %u %.1lf %d %d %d :: %.1lf ms", state.layout_mode,
-           state.operator_type, state.selectivity, state.projectivity,
-           query_itr, state.write_ratio, state.scale_factor, state.column_count,
+  LOG_INFO("%d %d %.3lf %.3lf %u %.1lf %d %d %d :: %.1lf ms",
+           state.index_usage_type, state.query_complexity_type,
+           state.selectivity, state.projectivity,
+           query_itr, state.write_ratio,
+           state.scale_factor, state.attribute_count,
            state.tuples_per_tilegroup, duration);
 
-  out << state.layout_mode << " ";
-  out << state.operator_type << " ";
+  out << state.index_usage_type << " ";
+  out << state.query_complexity_type << " ";
   out << state.selectivity << " ";
   out << state.projectivity << " ";
   out << query_itr << " ";
   out << state.write_ratio << " ";
   out << state.scale_factor << " ";
-  out << state.column_count << " ";
+  out << state.attribute_count << " ";
   out << state.tuples_per_tilegroup << " ";
   out << duration << "\n";
 
@@ -311,7 +320,7 @@ static void ExecuteTest(std::vector<executor::AbstractExecutor *> &executors,
     auto duration = timer.GetDuration();
     total_duration += duration;
 
-    WriteOutput(duration);
+    //WriteOutput(duration);
 
     // Construct sample
     for (auto &index_columns : index_columns_accessed) {
@@ -325,27 +334,8 @@ static void ExecuteTest(std::vector<executor::AbstractExecutor *> &executors,
   }
 }
 
-std::vector<double> GetColumnsAccessed(const std::vector<oid_t> &column_ids) {
-  std::vector<double> columns_accessed;
-  std::map<oid_t, oid_t> columns_accessed_map;
-
-  // Init map
-  for (auto col : column_ids) columns_accessed_map[col] = 1;
-
-  for (int column_itr = 0; column_itr < state.column_count; column_itr++) {
-    auto location = columns_accessed_map.find(column_itr);
-    auto end = columns_accessed_map.end();
-    if (location != end)
-      columns_accessed.push_back(1);
-    else
-      columns_accessed.push_back(0);
-  }
-
-  return columns_accessed;
-}
-
-std::shared_ptr<index::Index> PickIndex(storage::DataTable *table,
-                                        std::vector<oid_t> query_attrs) {
+static std::shared_ptr<index::Index> PickIndex(storage::DataTable *table,
+                                               std::vector<oid_t> query_attrs) {
   // Construct set
   std::set<oid_t> query_attrs_set(query_attrs.begin(), query_attrs.end());
 
@@ -406,7 +396,7 @@ std::shared_ptr<index::Index> PickIndex(storage::DataTable *table,
   return index;
 }
 
-void RunSimpleQuery() {
+static void RunSimpleQuery() {
   std::vector<oid_t> tuple_key_attrs;
   std::vector<oid_t> index_key_attrs;
 
@@ -423,16 +413,16 @@ void RunSimpleQuery() {
   }
 
   UNUSED_ATTRIBUTE std::stringstream os;
-  os << "Direct :: ";
+  os << "Simple :: ";
   for (auto tuple_key_attr : tuple_key_attrs) {
     os << tuple_key_attr << " ";
   }
   LOG_INFO("%s", os.str().c_str());
 
-  RunQuery(tuple_key_attrs, index_key_attrs);
+  QueryHelper(tuple_key_attrs, index_key_attrs);
 }
 
-void RunModerateQuery() {
+static void RunModerateQuery() {
   LOG_INFO("Moderate Query");
 
   std::vector<oid_t> tuple_key_attrs;
@@ -451,32 +441,163 @@ void RunModerateQuery() {
     index_key_attrs = {0};
   }
 
-  RunQuery(tuple_key_attrs, index_key_attrs);
+  UNUSED_ATTRIBUTE std::stringstream os;
+  os << "Moderate :: ";
+  for (auto tuple_key_attr : tuple_key_attrs) {
+    os << tuple_key_attr << " ";
+  }
+  LOG_INFO("%s", os.str().c_str());
+
+  QueryHelper(tuple_key_attrs, index_key_attrs);
+}
+
+static void RunJoinQuery(const std::vector<oid_t> &left_table_tuple_key_attrs,
+                  const std::vector<oid_t> &left_table_index_key_attrs,
+                  const std::vector<oid_t> &right_table_tuple_key_attrs,
+                  const std::vector<oid_t> &right_table_index_key_attrs,
+                  const oid_t left_table_join_column,
+                  const oid_t right_table_join_column) {
+  const bool is_inlined = true;
+  auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
+
+  auto txn = txn_manager.BeginTransaction();
+
+  /////////////////////////////////////////////////////////
+  // SEQ SCAN + PREDICATE
+  /////////////////////////////////////////////////////////
+
+  std::unique_ptr<executor::ExecutorContext> context(
+      new executor::ExecutorContext(txn));
+
+  // Column ids to be added to logical tile after scan.
+  // Left half of the columns are considered left table, right half of the
+  // columns are considered right table.
+  std::vector<oid_t> column_ids;
+  oid_t column_count = state.attribute_count;
+
+  for (oid_t col_itr = 0; col_itr < column_count; col_itr++) {
+    column_ids.push_back(sdbench_column_ids[col_itr]);
+  }
+
+  // Create and set up seq scan executor
+  auto left_table_scan_node = CreateHybridScanPlan(
+      left_table_tuple_key_attrs, left_table_index_key_attrs, column_ids);
+  auto right_table_scan_node = CreateHybridScanPlan(
+      right_table_tuple_key_attrs, right_table_index_key_attrs, column_ids);
+
+  executor::HybridScanExecutor left_table_hybrid_scan_executor(
+      left_table_scan_node.get(), context.get());
+  executor::HybridScanExecutor right_table_hybrid_scan_executor(
+      right_table_scan_node.get(), context.get());
+
+  /////////////////////////////////////////////////////////
+  // JOIN EXECUTOR
+  /////////////////////////////////////////////////////////
+
+  auto join_type = JOIN_TYPE_INNER;
+
+  // Create join predicate
+  std::unique_ptr<expression::TupleValueExpression> left_table_attr(
+      new expression::TupleValueExpression(VALUE_TYPE_INTEGER, 0,
+                                           left_table_join_column));
+  std::unique_ptr<expression::TupleValueExpression> right_table_attr(
+      new expression::TupleValueExpression(VALUE_TYPE_INTEGER, 1,
+                                           right_table_join_column));
+
+  std::unique_ptr<expression::ComparisonExpression<expression::CmpLt>>
+  join_predicate(new expression::ComparisonExpression<expression::CmpLt>(
+      EXPRESSION_TYPE_COMPARE_LESSTHAN, left_table_attr.get(),
+      right_table_attr.get()));
+
+  std::unique_ptr<const planner::ProjectInfo> project_info(nullptr);
+  std::shared_ptr<const catalog::Schema> schema(nullptr);
+
+  planner::NestedLoopJoinPlan nested_loop_join_node(
+      join_type, std::move(join_predicate), std::move(project_info), schema);
+
+  // Run the nested loop join executor
+  executor::NestedLoopJoinExecutor nested_loop_join_executor(
+      &nested_loop_join_node, nullptr);
+
+  // Construct the executor tree
+  nested_loop_join_executor.AddChild(&left_table_hybrid_scan_executor);
+  nested_loop_join_executor.AddChild(&right_table_hybrid_scan_executor);
+
+  /////////////////////////////////////////////////////////
+  // MATERIALIZE
+  /////////////////////////////////////////////////////////
+
+  // Create and set up materialization executor
+  std::vector<catalog::Column> output_columns;
+  std::unordered_map<oid_t, oid_t> old_to_new_cols;
+  oid_t join_column_count = column_count * 2;
+  for (oid_t col_itr = 0; col_itr < join_column_count; col_itr++) {
+    auto column =
+        catalog::Column(VALUE_TYPE_INTEGER, GetTypeSize(VALUE_TYPE_INTEGER),
+                        "" + std::to_string(col_itr), is_inlined);
+    output_columns.push_back(column);
+
+    old_to_new_cols[col_itr] = col_itr;
+  }
+
+  std::shared_ptr<const catalog::Schema> output_schema(
+      new catalog::Schema(output_columns));
+  bool physify_flag = true;  // is going to create a physical tile
+  planner::MaterializationPlan mat_node(old_to_new_cols, output_schema,
+                                        physify_flag);
+
+  executor::MaterializationExecutor mat_executor(&mat_node, nullptr);
+  mat_executor.AddChild(&nested_loop_join_executor);
+
+  /////////////////////////////////////////////////////////
+  // EXECUTE
+  /////////////////////////////////////////////////////////
+
+  std::vector<executor::AbstractExecutor *> executors;
+  executors.push_back(&mat_executor);
+
+  /////////////////////////////////////////////////////////
+  // COLLECT STATS
+  /////////////////////////////////////////////////////////
+
+  std::vector<double> left_table_index_columns_accessed(
+      left_table_tuple_key_attrs.begin(), left_table_tuple_key_attrs.end());
+  std::vector<double> right_table_index_columns_accessed(
+      right_table_tuple_key_attrs.begin(), right_table_tuple_key_attrs.end());
+
+  auto selectivity = state.selectivity;
+
+  ExecuteTest(
+      executors, brain::SAMPLE_TYPE_ACCESS,
+      {left_table_index_columns_accessed, right_table_index_columns_accessed},
+      selectivity);
+
+  txn_manager.CommitTransaction();
 }
 
 /**
  * @brief Run complex query
  * @details 60% join test, 30% moderate query, 10% simple query
  */
-void RunComplexQeury() {
+static void RunComplexQuery() {
   LOG_INFO("Complex Query");
 
   auto rand_sample = rand() % 10;
 
   // Assume there are 20 columns, 10 for the left table, 10 for the right table
   if (rand_sample <= 2) {
-    RunJoinTest({3, 4}, {0, 1}, {10, 11}, {0, 1}, 5, 12);
+    RunJoinQuery({3, 4}, {0, 1}, {10, 11}, {0, 1}, 5, 12);
   } else if (rand_sample <= 5) {
-    RunJoinTest({3, 6}, {0, 1}, {10, 14}, {0, 1}, 4, 13);
+    RunJoinQuery({3, 6}, {0, 1}, {10, 14}, {0, 1}, 4, 13);
   } else if (rand_sample <= 8) {
-    RunQuery({3, 4}, {0, 1});
+    QueryHelper({3, 4}, {0, 1});
   } else {
-    RunQuery({2}, {0});
+    QueryHelper({2}, {0});
   }
 }
 
-void RunQuery(const std::vector<oid_t> &tuple_key_attrs,
-              const std::vector<oid_t> &index_key_attrs) {
+static void QueryHelper(const std::vector<oid_t> &tuple_key_attrs,
+                 const std::vector<oid_t> &index_key_attrs) {
   const bool is_inlined = true;
   auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
 
@@ -489,7 +610,7 @@ void RunQuery(const std::vector<oid_t> &tuple_key_attrs,
   // Column ids to be added to logical tile after scan.
   // We need all columns because projection can require any column
   std::vector<oid_t> column_ids;
-  oid_t column_count = state.column_count;
+  oid_t column_count = state.attribute_count;
 
   column_ids.push_back(0);
   for (oid_t col_itr = 0; col_itr < column_count; col_itr++) {
@@ -510,7 +631,7 @@ void RunQuery(const std::vector<oid_t> &tuple_key_attrs,
 
   // Resize column ids to contain only columns
   // over which we compute aggregates
-  column_count = state.projectivity * state.column_count;
+  column_count = state.projectivity * state.attribute_count;
   column_ids.resize(column_count);
 
   // (1-5) Setup plan node
@@ -537,7 +658,7 @@ void RunQuery(const std::vector<oid_t> &tuple_key_attrs,
         EXPRESSION_TYPE_AGGREGATE_MAX,
         expression::ExpressionUtil::TupleValueFactory(VALUE_TYPE_INTEGER, 0,
                                                       column_id),
-        false);
+                                                      false);
     agg_terms.push_back(max_column_agg);
   }
 
@@ -613,7 +734,28 @@ void RunQuery(const std::vector<oid_t> &tuple_key_attrs,
   txn_manager.CommitTransaction();
 }
 
-void RunInsertTest() {
+/**
+ * @brief Run query depending on query type
+ */
+static void RunQuery() {
+
+  switch (state.query_complexity_type) {
+    case QUERY_COMPLEXITY_TYPE_SIMPLE:
+      RunSimpleQuery();
+      break;
+    case QUERY_COMPLEXITY_TYPE_MODERATE:
+      RunModerateQuery();
+      break;
+    case QUERY_COMPLEXITY_TYPE_COMPLEX:
+      RunComplexQuery();
+      break;
+    default:
+      break;
+  }
+
+}
+
+static void RunInsert() {
   auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
 
   auto txn = txn_manager.BeginTransaction();
@@ -634,7 +776,7 @@ void RunInsertTest() {
   target_list.clear();
   direct_map_list.clear();
 
-  for (auto col_id = 0; col_id <= state.column_count; col_id++) {
+  for (auto col_id = 0; col_id <= state.attribute_count; col_id++) {
     auto expression =
         expression::ExpressionUtil::ConstantValueFactory(insert_val);
     target_list.emplace_back(col_id, expression);
@@ -645,10 +787,9 @@ void RunInsertTest() {
       new planner::ProjectInfo(std::move(target_list),
                                std::move(direct_map_list)));
 
-  auto orig_tuple_count = state.scale_factor * state.tuples_per_tilegroup;
-  auto bulk_insert_count = state.write_ratio * orig_tuple_count;
+  auto bulk_insert_count = 1;
 
-  LOG_INFO("Bulk insert count : %lf", bulk_insert_count);
+  LOG_INFO("Bulk insert count : %d", bulk_insert_count);
   planner::InsertPlan insert_node(sdbench_table.get(), std::move(project_info),
                                   bulk_insert_count);
   executor::InsertExecutor insert_executor(&insert_node, context.get());
@@ -672,250 +813,22 @@ void RunInsertTest() {
   txn_manager.CommitTransaction();
 }
 
-void RunJoinTest(const std::vector<oid_t> &left_table_tuple_key_attrs,
-                 const std::vector<oid_t> &left_table_index_key_attrs,
-                 const std::vector<oid_t> &right_table_tuple_key_attrs,
-                 const std::vector<oid_t> &right_table_index_key_attrs,
-                 const oid_t left_table_join_column,
-                 const oid_t right_table_join_column) {
-  const bool is_inlined = true;
-  auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
-
-  auto txn = txn_manager.BeginTransaction();
-
-  /////////////////////////////////////////////////////////
-  // SEQ SCAN + PREDICATE
-  /////////////////////////////////////////////////////////
-
-  std::unique_ptr<executor::ExecutorContext> context(
-      new executor::ExecutorContext(txn));
-
-  // Column ids to be added to logical tile after scan.
-  // Left half of the columns are considered left table, right half of the
-  // columns are considered right table.
-  std::vector<oid_t> column_ids;
-  oid_t column_count = state.column_count;
-
-  for (oid_t col_itr = 0; col_itr < column_count; col_itr++) {
-    column_ids.push_back(sdbench_column_ids[col_itr]);
-  }
-
-  // Create and set up seq scan executor
-  auto left_table_scan_node = CreateHybridScanPlan(
-      left_table_tuple_key_attrs, left_table_index_key_attrs, column_ids);
-  auto right_table_scan_node = CreateHybridScanPlan(
-      right_table_tuple_key_attrs, right_table_index_key_attrs, column_ids);
-
-  executor::HybridScanExecutor left_table_hybrid_scan_executor(
-      left_table_scan_node.get(), context.get());
-  executor::HybridScanExecutor right_table_hybrid_scan_executor(
-      right_table_scan_node.get(), context.get());
-
-  /////////////////////////////////////////////////////////
-  // JOIN EXECUTOR
-  /////////////////////////////////////////////////////////
-
-  auto join_type = JOIN_TYPE_INNER;
-
-  // Create join predicate
-  std::unique_ptr<expression::TupleValueExpression> left_table_attr(
-      new expression::TupleValueExpression(VALUE_TYPE_INTEGER, 0,
-                                           left_table_join_column));
-  std::unique_ptr<expression::TupleValueExpression> right_table_attr(
-      new expression::TupleValueExpression(VALUE_TYPE_INTEGER, 1,
-                                           right_table_join_column));
-
-  std::unique_ptr<expression::ComparisonExpression<expression::CmpLt>>
-      join_predicate(new expression::ComparisonExpression<expression::CmpLt>(
-          EXPRESSION_TYPE_COMPARE_LESSTHAN, left_table_attr.get(),
-          right_table_attr.get()));
-
-  std::unique_ptr<const planner::ProjectInfo> project_info(nullptr);
-  std::shared_ptr<const catalog::Schema> schema(nullptr);
-
-  planner::NestedLoopJoinPlan nested_loop_join_node(
-      join_type, std::move(join_predicate), std::move(project_info), schema);
-
-  // Run the nested loop join executor
-  executor::NestedLoopJoinExecutor nested_loop_join_executor(
-      &nested_loop_join_node, nullptr);
-
-  // Construct the executor tree
-  nested_loop_join_executor.AddChild(&left_table_hybrid_scan_executor);
-  nested_loop_join_executor.AddChild(&right_table_hybrid_scan_executor);
-
-  /////////////////////////////////////////////////////////
-  // MATERIALIZE
-  /////////////////////////////////////////////////////////
-
-  // Create and set up materialization executor
-  std::vector<catalog::Column> output_columns;
-  std::unordered_map<oid_t, oid_t> old_to_new_cols;
-  oid_t join_column_count = column_count * 2;
-  for (oid_t col_itr = 0; col_itr < join_column_count; col_itr++) {
-    auto column =
-        catalog::Column(VALUE_TYPE_INTEGER, GetTypeSize(VALUE_TYPE_INTEGER),
-                        "" + std::to_string(col_itr), is_inlined);
-    output_columns.push_back(column);
-
-    old_to_new_cols[col_itr] = col_itr;
-  }
-
-  std::shared_ptr<const catalog::Schema> output_schema(
-      new catalog::Schema(output_columns));
-  bool physify_flag = true;  // is going to create a physical tile
-  planner::MaterializationPlan mat_node(old_to_new_cols, output_schema,
-                                        physify_flag);
-
-  executor::MaterializationExecutor mat_executor(&mat_node, nullptr);
-  mat_executor.AddChild(&nested_loop_join_executor);
-
-  /////////////////////////////////////////////////////////
-  // EXECUTE
-  /////////////////////////////////////////////////////////
-
-  std::vector<executor::AbstractExecutor *> executors;
-  executors.push_back(&mat_executor);
-
-  /////////////////////////////////////////////////////////
-  // COLLECT STATS
-  /////////////////////////////////////////////////////////
-
-  std::vector<double> left_table_index_columns_accessed(
-      left_table_tuple_key_attrs.begin(), left_table_tuple_key_attrs.end());
-  std::vector<double> right_table_index_columns_accessed(
-      right_table_tuple_key_attrs.begin(), right_table_tuple_key_attrs.end());
-
-  auto selectivity = state.selectivity;
-
-  ExecuteTest(
-      executors, brain::SAMPLE_TYPE_ACCESS,
-      {left_table_index_columns_accessed, right_table_index_columns_accessed},
-      selectivity);
-
-  txn_manager.CommitTransaction();
-}
-
-static void RunAdaptTest() {
-  double write_ratio = state.write_ratio;
-  double repeat_count = state.total_ops / state.phase_length;
-
-  total_duration = 0;
-
-  state.operator_type = OPERATOR_TYPE_DIRECT;
-
-  for (oid_t repeat_itr = 0; repeat_itr < repeat_count; repeat_itr++) {
-    double rand_sample = (double)rand() / RAND_MAX;
-
-    if (rand_sample < write_ratio) {
-      // Do insert
-      LOG_INFO("Do insert");
-      RunInsertTest();
-    } else {
-      // Do read
-      LOG_INFO("Do read");
-      RunModerateQuery();
-    }
-  }
-
-  LOG_INFO("Total Duration : %.2lf", total_duration);
-}
-
-static void RunQueryTest() {
-  double repeat_count = state.total_ops / state.phase_length;
-
-  total_duration = 0;
-
-  for (oid_t repeat_itr = 0; repeat_itr < repeat_count; repeat_itr++) {
-    double rand_sample = (double)rand() / RAND_MAX;
-
-    // Uniform distribution of simple, moderate and complex query
-    if (rand_sample < 0.33) {
-      RunSimpleQuery();
-    } else if (rand_sample < 0.66) {
-      RunModerateQuery();
-    } else {
-      RunComplexQeury();
-    }
-  }
-
-  LOG_INFO("Total Duration : %.2lf", total_duration);
-}
-
-std::vector<std::size_t> phase_lengths = {40};
-
-void RunAdaptExperiment() {
+void RunSDBenchTest() {
   // Setup layout tuner
   auto &index_tuner = brain::IndexTuner::GetInstance();
   std::thread index_builder;
 
-  state.projectivity = 1.0;
-  state.selectivity = 0.001;
-  state.column_count = 10;
-  state.layout_mode = LAYOUT_TYPE_ROW;
-  state.adapt_layout = true;
-
-  state.total_ops = 400;
-
   peloton_layout_mode = state.layout_mode;
 
   // Generate sequence
-  GenerateSequence(state.column_count);
+  GenerateSequence(state.attribute_count);
 
   CreateAndLoadTable((LayoutType)peloton_layout_mode);
 
-  for (auto phase_length : phase_lengths) {
-    // Set phase length
-    state.phase_length = phase_length;
-    LOG_INFO("Phase Length: %lu", state.phase_length);
+  double write_ratio = state.write_ratio;
+  double phase_count = state.total_ops / state.phase_length;
 
-    // Reset query counter
-    query_itr = 0;
-
-    // Start index tuner
-    index_tuner.Start();
-    index_tuner.AddTable(sdbench_table.get());
-
-    // Run adapt test
-    RunAdaptTest();
-
-    // Stop index tuner
-    index_tuner.Stop();
-    index_tuner.ClearTables();
-
-    // Drop Indexes
-    DropIndexes();
-  }
-
-  // Reset
-  state.adapt_layout = false;
-  query_itr = 0;
-
-  out.close();
-}
-
-void RunQueryExperiment() {
-  LOG_INFO("Run query experiment");
-  auto &index_tuner = brain::IndexTuner::GetInstance();
-  std::thread index_builder;
-
-  state.projectivity = 1.0;
-  state.selectivity = 0.001;
-  state.column_count = 10;
-  state.layout_mode = LAYOUT_TYPE_ROW;
-  state.adapt_layout = true;
-
-  state.total_ops = 3000;
-  state.phase_length = 300;
-
-  peloton_layout_mode = state.layout_mode;
-
-  // Generate sequence
-  GenerateSequence(state.column_count);
-
-  CreateAndLoadTable((LayoutType)peloton_layout_mode);
-
-  LOG_INFO("Phase length: %lu", state.phase_length);
+  total_duration = 0;
 
   // Reset query counter
   query_itr = 0;
@@ -924,16 +837,34 @@ void RunQueryExperiment() {
   index_tuner.Start();
   index_tuner.AddTable(sdbench_table.get());
 
-  // Run query test
-  RunQueryTest();
+  for (oid_t phase_itr = 0; phase_itr < phase_count; phase_itr++) {
+    double rand_sample = GetRandomSample();
 
+    // Do insert
+    if (rand_sample < write_ratio) {
+      LOG_INFO("Run insert");
+      RunInsert();
+    }
+    // Do read
+    else {
+      LOG_INFO("Run query");
+      RunQuery();
+    }
+
+  }
+
+  // Stop index tuner
   index_tuner.Stop();
   index_tuner.ClearTables();
 
+  // Drop Indexes
   DropIndexes();
 
+  // Reset
   state.adapt_layout = false;
   query_itr = 0;
+
+  LOG_INFO("Total Duration : %.2lf", total_duration);
 
   out.close();
 }

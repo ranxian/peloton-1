@@ -28,63 +28,10 @@ configuration state;
 
 // Main Entry Point
 void RunBenchmark() {
-  // Initialize settings
-  peloton_layout_mode = state.layout_mode;
 
-  // Generate sequence
-  GenerateSequence(state.column_count);
+  // Run a single sdbench test
+  RunSDBenchTest();
 
-  // Single run
-  if (state.experiment_type == EXPERIMENT_TYPE_INVALID) {
-    CreateAndLoadTable((LayoutType)peloton_layout_mode);
-
-    switch (state.operator_type) {
-      case OPERATOR_TYPE_DIRECT: {
-        std::vector<oid_t> tuple_key_attrs = {2, 4};
-        std::vector<oid_t> index_key_attrs = {0, 1};
-        RunQuery(tuple_key_attrs, index_key_attrs);
-        break;
-      }
-
-      case OPERATOR_TYPE_INSERT:
-        RunInsertTest();
-        break;
-
-      case OPERATOR_TYPE_JOIN: {
-        std::vector<oid_t> left_table_tuple_key_attrs = {1, 2};
-        std::vector<oid_t> left_table_index_key_attrs = {0, 1};
-        std::vector<oid_t> right_table_tuple_key_attrs = {4, 5};
-        std::vector<oid_t> right_table_index_key_attrs = {0, 1};
-        oid_t left_table_join_column = 3;
-        oid_t right_table_join_column = 6;
-        RunJoinTest(left_table_tuple_key_attrs, left_table_index_key_attrs,
-                    right_table_tuple_key_attrs, right_table_index_key_attrs,
-                    left_table_join_column, right_table_join_column);
-        break;
-      }
-
-      default:
-        LOG_ERROR("Unsupported test type : %d", state.operator_type);
-        break;
-    }
-
-  }
-  // Experiment
-  else {
-    switch (state.experiment_type) {
-      case EXPERIMENT_TYPE_ADAPT:
-        RunAdaptExperiment();
-        break;
-
-      case EXPERIMENT_TYPE_QUERY:
-        RunQueryExperiment();
-        break;
-
-      default:
-        LOG_ERROR("Unsupported experiment_type : %d", state.experiment_type);
-        break;
-    }
-  }
 }
 
 }  // namespace sdbench

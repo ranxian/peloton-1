@@ -25,22 +25,6 @@ namespace peloton {
 namespace benchmark {
 namespace sdbench {
 
-enum OperatorType {
-  OPERATOR_TYPE_INVALID = 0, /* invalid */
-
-  OPERATOR_TYPE_DIRECT = 1,
-  OPERATOR_TYPE_INSERT = 2,
-  OPERATOR_TYPE_JOIN   = 3,
-};
-
-enum ExperimentType {
-  EXPERIMENT_TYPE_INVALID = 0,
-
-  EXPERIMENT_TYPE_ADAPT = 1,
-
-  EXPERIMENT_TYPE_QUERY = 2,
-};
-
 enum IndexUsageType {
   INDEX_USAGE_TYPE_INVALID = 0,
 
@@ -49,17 +33,24 @@ enum IndexUsageType {
   INDEX_USAGE_TYPE_NEVER = 3 // don't use indexes (no online tuning)
 };
 
+enum QueryComplexityType {
+  QUERY_COMPLEXITY_TYPE_INVALID = 0,
+
+  QUERY_COMPLEXITY_TYPE_SIMPLE = 1,
+  QUERY_COMPLEXITY_TYPE_MODERATE = 2,
+  QUERY_COMPLEXITY_TYPE_COMPLEX = 3
+
+};
+
 extern int orig_scale_factor;
 
 class configuration {
  public:
-  // scan type
-  HybridScanType hybrid_scan_type;
+  // What kind of indexes can be used ?
+  IndexUsageType index_usage_type;
 
-  OperatorType operator_type;
-
-  // experiment
-  ExperimentType experiment_type;
+  // Complexity of the query.
+  QueryComplexityType query_complexity_type;
 
   // size of the table
   int scale_factor;
@@ -74,7 +65,7 @@ class configuration {
   double projectivity;
 
   // column count
-  int column_count;
+  int attribute_count;
 
   // update ratio
   double write_ratio;
@@ -91,8 +82,8 @@ class configuration {
   // Adapt the indexes ?
   bool adapt_indexes;
 
-  // What kind of indexes can be used ?
-  IndexUsageType index_usage_type;
+  // scan type
+  HybridScanType hybrid_scan_type;
 
 };
 
