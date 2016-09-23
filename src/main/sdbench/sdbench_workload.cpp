@@ -233,7 +233,7 @@ static std::shared_ptr<planner::HybridScanPlan> CreateHybridScanPlan(
     hybrid_scan_type = HYBRID_SCAN_TYPE_HYBRID;
   }
 
-  LOG_TRACE("Hybrid scan type : %d", hybrid_scan_type);
+  LOG_INFO("Hybrid scan type : %d", hybrid_scan_type);
 
   std::shared_ptr<planner::HybridScanPlan> hybrid_scan_node(
       new planner::HybridScanPlan(sdbench_table.get(), predicate, column_ids,
@@ -320,7 +320,7 @@ static void ExecuteTest(std::vector<executor::AbstractExecutor *> &executors,
     auto duration = timer.GetDuration();
     total_duration += duration;
 
-    //WriteOutput(duration);
+    WriteOutput(duration);
 
     // Construct sample
     for (auto &index_columns : index_columns_accessed) {
@@ -597,7 +597,12 @@ static void RunComplexQuery() {
 }
 
 static void QueryHelper(const std::vector<oid_t> &tuple_key_attrs,
-                 const std::vector<oid_t> &index_key_attrs) {
+                        const std::vector<oid_t> &index_key_attrs) {
+  std::string key_attrs = "";
+  for (oid_t attr : tuple_key_attrs) {
+    key_attrs += " " + std::to_string(attr);
+  }
+  LOG_INFO("Run query on %s ", key_attrs.c_str());
   const bool is_inlined = true;
   auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
 
@@ -756,6 +761,7 @@ static void RunQuery() {
 }
 
 static void RunInsert() {
+  LOG_INFO("Run Insert");
   auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
 
   auto txn = txn_manager.BeginTransaction();
@@ -842,12 +848,10 @@ void RunSDBenchTest() {
 
     // Do insert
     if (rand_sample < write_ratio) {
-      LOG_INFO("Run insert");
       RunInsert();
     }
     // Do read
     else {
-      LOG_INFO("Run query");
       RunQuery();
     }
 

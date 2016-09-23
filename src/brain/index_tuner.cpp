@@ -52,7 +52,7 @@ void IndexTuner::Start(){
 // Add an ad-hoc index
 static void AddIndex(storage::DataTable* table,
                      std::set<oid_t> suggested_index_attrs) {
-
+  LOG_INFO("Add an index");
   // Construct index metadata
   std::vector<oid_t> key_attrs(suggested_index_attrs.size());
   std::copy(suggested_index_attrs.begin(),

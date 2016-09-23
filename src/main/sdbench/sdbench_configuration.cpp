@@ -31,7 +31,6 @@ void Usage() {
       "   -a --attribute_count       :  # of attributes\n"
       "   -w --write_ratio           :  Fraction of writes\n"
       "   -g --tuples_per_tg         :  # of tuples per tilegroup\n"
-      "   -y --hybrid_scan_type      :  Hybrid scan type\n"
       "   -t --phase_length          :  Length of a phase\n"
       "   -q --total_ops             :  Total # of ops\n"
       "   -s --selectivity           :  Selectivity\n"
@@ -48,7 +47,6 @@ static struct option opts[] = {
     {"attribute_count", optional_argument, NULL, 'a'},
     {"write_ratio", optional_argument, NULL, 'w'},
     {"tuples_per_tg", optional_argument, NULL, 'g'},
-    {"hybrid_scan_type", optional_argument, NULL, 'y'},
     {"phase_length", optional_argument, NULL, 't'},
     {"total_ops", optional_argument, NULL, 'q'},
     {"selectivity", optional_argument, NULL, 's'},
@@ -110,27 +108,6 @@ static void ValidateQueryComplexityType(const configuration &state) {
           break;
       }
     }
-}
-
-static void ValidateHybridScanType(const configuration &state) {
-  if (state.hybrid_scan_type < 1 || state.hybrid_scan_type > 3) {
-    LOG_ERROR("Invalid hybrid_scan_type :: %d", state.hybrid_scan_type);
-    exit(EXIT_FAILURE);
-  } else {
-    switch (state.hybrid_scan_type) {
-      case HYBRID_SCAN_TYPE_SEQUENTIAL:
-        LOG_INFO("%s : SEQUENTIAL", "hybrid_scan_type ");
-        break;
-      case HYBRID_SCAN_TYPE_INDEX:
-        LOG_INFO("%s : INDEX", "hybrid_scan_type ");
-        break;
-      case HYBRID_SCAN_TYPE_HYBRID:
-        LOG_INFO("%s : HYBRID", "hybrid_scan_type ");
-        break;
-      default:
-        break;
-    }
-  }
 }
 
 static void ValidateScaleFactor(const configuration &state) {
@@ -238,8 +215,6 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   state.write_ratio = 0.0;
   state.tuples_per_tilegroup = DEFAULT_TUPLES_PER_TILEGROUP;
 
-  state.hybrid_scan_type = HYBRID_SCAN_TYPE_HYBRID;
-
   state.total_ops = 1;
   state.phase_length = 1;
 
@@ -276,9 +251,6 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
       case 'g':
         state.tuples_per_tilegroup = atoi(optarg);
         break;
-      case 'y':
-        state.hybrid_scan_type = (HybridScanType)atoi(optarg);
-        break;
       case 'q':
         state.total_ops = atol(optarg);
         break;
@@ -309,7 +281,6 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   ValidateQueryComplexityType(state);
   ValidateScaleFactor(state);
   ValidateAttributeCount(state);
-  ValidateHybridScanType(state);
   ValidateWriteRatio(state);
   ValidateTuplesPerTileGroup(state);
   ValidateTotalOps(state);
