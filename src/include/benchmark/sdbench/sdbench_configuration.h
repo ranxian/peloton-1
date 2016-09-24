@@ -81,10 +81,6 @@ class configuration {
 
   // Adapt the indexes ?
   bool adapt_indexes;
-
-  // scan type
-  HybridScanType hybrid_scan_type;
-
 };
 
 void Usage(FILE *out);

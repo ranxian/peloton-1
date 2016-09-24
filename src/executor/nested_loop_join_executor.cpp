@@ -44,11 +44,21 @@ bool NestedLoopJoinExecutor::DInit() {
     return status;
   }
 
-  PL_ASSERT(right_result_tiles_.empty());
-  right_child_done_ = false;
-  right_result_itr_ = 0;
+  // WARNING: hard code the logic to reset the state of the executor for sdbench
+  result.clear();
+  left_result_tiles_.clear();
+  right_result_tiles_.clear();
 
-  PL_ASSERT(left_result_tiles_.empty());
+  right_child_done_ = false;
+  left_child_done_ = false;
+  right_result_itr_ = 0;
+  left_result_itr_ = 0;
+
+  no_matching_left_row_sets_.clear();
+  no_matching_right_row_sets_.clear();
+
+  left_matching_idx = 0;
+  right_matching_idx = 0;
 
   return true;
 }
