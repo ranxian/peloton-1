@@ -36,6 +36,7 @@ void Usage() {
       "   -s --selectivity           :  Selectivity\n"
       "   -p --projectivity          :  Projectivity\n"
       "   -l --layout                :  Layout\n"
+      "   -v --verbose               :  Output verbosity\n"
   );
   exit(EXIT_FAILURE);
 }
@@ -52,6 +53,7 @@ static struct option opts[] = {
     {"selectivity", optional_argument, NULL, 's'},
     {"projectivity", optional_argument, NULL, 'p'},
     {"layout", optional_argument, NULL, 'l'},
+    {"verbose", optional_argument, NULL, 'v'},
     {NULL, 0, NULL, 0}
 };
 
@@ -225,6 +227,8 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   state.adapt_layout = false;
   state.adapt_indexes = true;
 
+  state.verbose = false;
+
   // Parse args
   while (1) {
     int idx = 0;
@@ -265,6 +269,9 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
         break;
       case 'l':
         state.layout_mode = (LayoutType)atoi(optarg);
+        break;
+      case 'v':
+        state.verbose = atoi(optarg);
         break;
 
       case 'h':
