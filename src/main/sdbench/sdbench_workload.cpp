@@ -267,13 +267,21 @@ UNUSED_ATTRIBUTE static void WriteOutput(double duration) {
   // Convert to ms
   duration *= 1000;
 
-  LOG_INFO("----------------------------------------------------------");
-  LOG_INFO("%d %d %.3lf %.3lf %u %.1lf %d %d %d :: %.1lf ms",
-           state.index_usage_type, state.query_complexity_type,
-           state.selectivity, state.projectivity,
-           query_itr, state.write_ratio,
-           state.scale_factor, state.attribute_count,
-           state.tuples_per_tilegroup, duration);
+  // Write out output in verbose mode
+  if(state.verbose == true) {
+    LOG_INFO("----------------------------------------------------------");
+    LOG_INFO("%d %d %.3lf %.3lf %u %.1lf %d %d %d :: %.1lf ms",
+             state.index_usage_type,
+             state.query_complexity_type,
+             state.selectivity,
+             state.projectivity,
+             query_itr,
+             state.write_ratio,
+             state.scale_factor,
+             state.attribute_count,
+             state.tuples_per_tilegroup,
+             duration);
+  }
 
   out << state.index_usage_type << " ";
   out << state.query_complexity_type << " ";

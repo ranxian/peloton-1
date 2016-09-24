@@ -81,6 +81,9 @@ class configuration {
 
   // Adapt the indexes ?
   bool adapt_indexes;
+
+  // Verbose output
+  bool verbose;
 };
 
 void Usage(FILE *out);
