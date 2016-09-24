@@ -195,6 +195,17 @@ static void CreateIndexScanPredicate(std::vector<oid_t> key_attrs,
 }
 
 /**
+ * @brief Get the string for a list of oids.
+ */
+static inline std::string GetOidVectorString(const std::vector<oid_t> &oids) {
+  std::string oid_str = "";
+  for (oid_t o : oids) {
+    oid_str += " " + std::to_string(o);
+  }
+  return oid_str;
+}
+
+/**
  * @brief Create a hybrid scan executor based on selected key columns.
  * @param tuple_key_attrs The columns which the seq scan predicate is on.
  * @param index_key_attrs The columns in the *index key tuple* which the index
@@ -441,12 +452,7 @@ static void RunModerateQuery() {
     index_key_attrs = {0};
   }
 
-  UNUSED_ATTRIBUTE std::stringstream os;
-  os << "Moderate :: ";
-  for (auto tuple_key_attr : tuple_key_attrs) {
-    os << tuple_key_attr << " ";
-  }
-  LOG_INFO("%s", os.str().c_str());
+  LOG_INFO("Moderate :: %s", GetOidVectorString(tuple_key_attrs).c_str());
 
   QueryHelper(tuple_key_attrs, index_key_attrs);
 }
@@ -457,6 +463,9 @@ static void RunJoinQuery(const std::vector<oid_t> &left_table_tuple_key_attrs,
                   const std::vector<oid_t> &right_table_index_key_attrs,
                   const oid_t left_table_join_column,
                   const oid_t right_table_join_column) {
+  LOG_INFO("Run join query on left table: %s and right table: %s",
+    GetOidVectorString(left_table_tuple_key_attrs).c_str(),
+    GetOidVectorString(right_table_tuple_key_attrs).c_str());
   const bool is_inlined = true;
   auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
 
@@ -497,17 +506,17 @@ static void RunJoinQuery(const std::vector<oid_t> &left_table_tuple_key_attrs,
   auto join_type = JOIN_TYPE_INNER;
 
   // Create join predicate
-  std::unique_ptr<expression::TupleValueExpression> left_table_attr(
-      new expression::TupleValueExpression(VALUE_TYPE_INTEGER, 0,
-                                           left_table_join_column));
-  std::unique_ptr<expression::TupleValueExpression> right_table_attr(
+  expression::TupleValueExpression *left_table_attr =
+    new expression::TupleValueExpression(VALUE_TYPE_INTEGER, 0,
+                                           left_table_join_column);
+  expression::TupleValueExpression *right_table_attr =
       new expression::TupleValueExpression(VALUE_TYPE_INTEGER, 1,
-                                           right_table_join_column));
+                                           right_table_join_column);
 
   std::unique_ptr<expression::ComparisonExpression<expression::CmpLt>>
   join_predicate(new expression::ComparisonExpression<expression::CmpLt>(
-      EXPRESSION_TYPE_COMPARE_LESSTHAN, left_table_attr.get(),
-      right_table_attr.get()));
+      EXPRESSION_TYPE_COMPARE_LESSTHAN, left_table_attr,
+      right_table_attr));
 
   std::unique_ptr<const planner::ProjectInfo> project_info(nullptr);
   std::shared_ptr<const catalog::Schema> schema(nullptr);
@@ -598,11 +607,7 @@ static void RunComplexQuery() {
 
 static void QueryHelper(const std::vector<oid_t> &tuple_key_attrs,
                         const std::vector<oid_t> &index_key_attrs) {
-  std::string key_attrs = "";
-  for (oid_t attr : tuple_key_attrs) {
-    key_attrs += " " + std::to_string(attr);
-  }
-  LOG_INFO("Run query on %s ", key_attrs.c_str());
+  LOG_INFO("Run query on %s ", GetOidVectorString(tuple_key_attrs).c_str());
   const bool is_inlined = true;
   auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
 

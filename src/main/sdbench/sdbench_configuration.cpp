@@ -210,7 +210,7 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   state.query_complexity_type = QUERY_COMPLEXITY_TYPE_SIMPLE;
 
   state.scale_factor = 100.0;
-  state.attribute_count = 10;
+  state.attribute_count = 20;
 
   state.write_ratio = 0.0;
   state.tuples_per_tilegroup = DEFAULT_TUPLES_PER_TILEGROUP;
