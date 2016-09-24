@@ -60,10 +60,6 @@ bool NestedLoopJoinExecutor::DInit() {
   left_matching_idx = 0;
   right_matching_idx = 0;
 
-  // init the left and right child
-  children_[0]->Init();
-  children_[1]->Init();
-
   return true;
 }
 
