@@ -80,10 +80,17 @@ namespace sdbench {
 
 // Function definitions
 static std::shared_ptr<index::Index> PickIndex(storage::DataTable *table,
-                                        std::vector<oid_t> query_attrs);
+                                               std::vector<oid_t> query_attrs);
 
-static void QueryHelper(const std::vector<oid_t> &tuple_key_attrs,
-                 const std::vector<oid_t> &index_key_attrs);
+static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
+                                 const std::vector<oid_t> &index_key_attrs);
+
+static void JoinQueryHelper(const std::vector<oid_t> &left_table_tuple_key_attrs,
+                            const std::vector<oid_t> &left_table_index_key_attrs,
+                            const std::vector<oid_t> &right_table_tuple_key_attrs,
+                            const std::vector<oid_t> &right_table_index_key_attrs,
+                            const oid_t left_table_join_column,
+                            const oid_t right_table_join_column);
 
 // Tuple id counter
 oid_t sdbench_tuple_counter = -1000000;
@@ -175,9 +182,9 @@ static expression::AbstractExpression *CreateScanPredicate(
 }
 
 static void CreateIndexScanPredicate(std::vector<oid_t> key_attrs,
-                              std::vector<oid_t> &key_column_ids,
-                              std::vector<ExpressionType> &expr_types,
-                              std::vector<Value> &values) {
+                                     std::vector<oid_t> &key_column_ids,
+                                     std::vector<ExpressionType> &expr_types,
+                                     std::vector<Value> &values) {
   const int tuple_start_offset = GetLowerBound();
   const int tuple_end_offset = GetUpperBound();
 
@@ -303,54 +310,51 @@ static void ExecuteTest(std::vector<executor::AbstractExecutor *> &executors,
                         double selectivity) {
   Timer<> timer;
 
-  auto txn_count = state.phase_length;
   bool status = false;
 
-  // Run these many transactions
-  for (oid_t txn_itr = 0; txn_itr < txn_count; txn_itr++) {
-    // Increment query counter
-    query_itr++;
+  // Increment query counter
+  query_itr++;
 
-    // Reset timer
-    timer.Reset();
-    timer.Start();
+  // Reset timer
+  timer.Reset();
+  timer.Start();
 
-    // Run all the executors
-    for (auto executor : executors) {
-      status = executor->Init();
-      if (status == false) {
-        throw Exception("Init failed");
-      }
-
-      std::vector<std::unique_ptr<executor::LogicalTile>> result_tiles;
-
-      while (executor->Execute() == true) {
-        std::unique_ptr<executor::LogicalTile> result_tile(
-            executor->GetOutput());
-        result_tiles.emplace_back(result_tile.release());
-      }
-
-      // Execute stuff
-      executor->Execute();
+  // Run all the executors
+  for (auto executor : executors) {
+    status = executor->Init();
+    if (status == false) {
+      throw Exception("Init failed");
     }
 
-    // Emit time
-    timer.Stop();
-    auto duration = timer.GetDuration();
-    total_duration += duration;
+    std::vector<std::unique_ptr<executor::LogicalTile>> result_tiles;
 
-    WriteOutput(duration);
-
-    // Construct sample
-    for (auto &index_columns : index_columns_accessed) {
-      brain::Sample index_sample(index_columns,
-                                 duration / index_columns_accessed.size(),
-                                 sample_type, selectivity);
-
-      // Record sample
-      sdbench_table->RecordIndexSample(index_sample);
+    while (executor->Execute() == true) {
+      std::unique_ptr<executor::LogicalTile> result_tile(
+          executor->GetOutput());
+      result_tiles.emplace_back(result_tile.release());
     }
+
+    // Execute stuff
+    executor->Execute();
   }
+
+  // Emit time
+  timer.Stop();
+  auto duration = timer.GetDuration();
+  total_duration += duration;
+
+  WriteOutput(duration);
+
+  // Construct sample
+  for (auto &index_columns : index_columns_accessed) {
+    brain::Sample index_sample(index_columns,
+                               duration / index_columns_accessed.size(),
+                               sample_type, selectivity);
+
+    // Record sample
+    sdbench_table->RecordIndexSample(index_sample);
+  }
+
 }
 
 static std::shared_ptr<index::Index> PickIndex(storage::DataTable *table,
@@ -438,7 +442,13 @@ static void RunSimpleQuery() {
   }
   LOG_INFO("%s", os.str().c_str());
 
-  QueryHelper(tuple_key_attrs, index_key_attrs);
+  // PHASE LENGTH
+  for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
+
+    AggregateQueryHelper(tuple_key_attrs, index_key_attrs);
+
+  }
+
 }
 
 static void RunModerateQuery() {
@@ -462,18 +472,49 @@ static void RunModerateQuery() {
 
   LOG_INFO("Moderate :: %s", GetOidVectorString(tuple_key_attrs).c_str());
 
-  QueryHelper(tuple_key_attrs, index_key_attrs);
+  // PHASE LENGTH
+  for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
+
+    AggregateQueryHelper(tuple_key_attrs, index_key_attrs);
+
+  }
 }
 
-static void RunJoinQuery(const std::vector<oid_t> &left_table_tuple_key_attrs,
-                  const std::vector<oid_t> &left_table_index_key_attrs,
-                  const std::vector<oid_t> &right_table_tuple_key_attrs,
-                  const std::vector<oid_t> &right_table_index_key_attrs,
-                  const oid_t left_table_join_column,
-                  const oid_t right_table_join_column) {
+/**
+ * @brief Run complex query
+ * @details 60% join test, 30% moderate query, 10% simple query
+ */
+static void RunComplexQuery() {
+  LOG_INFO("Complex Query");
+
+  // PHASE LENGTH
+  for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
+
+    auto rand_sample = rand() % 10;
+
+    // Assume there are 20 columns, 10 for the left table, 10 for the right table
+    if (rand_sample <= 2) {
+      JoinQueryHelper({3, 4}, {0, 1}, {10, 11}, {0, 1}, 5, 12);
+    } else if (rand_sample <= 5) {
+      JoinQueryHelper({3, 6}, {0, 1}, {10, 14}, {0, 1}, 4, 13);
+    } else if (rand_sample <= 8) {
+      AggregateQueryHelper({3, 4}, {0, 1});
+    } else {
+      AggregateQueryHelper({2}, {0});
+    }
+
+  }
+}
+
+static void JoinQueryHelper(const std::vector<oid_t> &left_table_tuple_key_attrs,
+                            const std::vector<oid_t> &left_table_index_key_attrs,
+                            const std::vector<oid_t> &right_table_tuple_key_attrs,
+                            const std::vector<oid_t> &right_table_index_key_attrs,
+                            const oid_t left_table_join_column,
+                            const oid_t right_table_join_column) {
   LOG_INFO("Run join query on left table: %s and right table: %s",
-    GetOidVectorString(left_table_tuple_key_attrs).c_str(),
-    GetOidVectorString(right_table_tuple_key_attrs).c_str());
+           GetOidVectorString(left_table_tuple_key_attrs).c_str(),
+           GetOidVectorString(right_table_tuple_key_attrs).c_str());
   const bool is_inlined = true;
   auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
 
@@ -515,7 +556,7 @@ static void RunJoinQuery(const std::vector<oid_t> &left_table_tuple_key_attrs,
 
   // Create join predicate
   expression::TupleValueExpression *left_table_attr =
-    new expression::TupleValueExpression(VALUE_TYPE_INTEGER, 0,
+      new expression::TupleValueExpression(VALUE_TYPE_INTEGER, 0,
                                            left_table_join_column);
   expression::TupleValueExpression *right_table_attr =
       new expression::TupleValueExpression(VALUE_TYPE_INTEGER, 1,
@@ -592,29 +633,8 @@ static void RunJoinQuery(const std::vector<oid_t> &left_table_tuple_key_attrs,
   txn_manager.CommitTransaction();
 }
 
-/**
- * @brief Run complex query
- * @details 60% join test, 30% moderate query, 10% simple query
- */
-static void RunComplexQuery() {
-  LOG_INFO("Complex Query");
-
-  auto rand_sample = rand() % 10;
-
-  // Assume there are 20 columns, 10 for the left table, 10 for the right table
-  if (rand_sample <= 2) {
-    RunJoinQuery({3, 4}, {0, 1}, {10, 11}, {0, 1}, 5, 12);
-  } else if (rand_sample <= 5) {
-    RunJoinQuery({3, 6}, {0, 1}, {10, 14}, {0, 1}, 4, 13);
-  } else if (rand_sample <= 8) {
-    QueryHelper({3, 4}, {0, 1});
-  } else {
-    QueryHelper({2}, {0});
-  }
-}
-
-static void QueryHelper(const std::vector<oid_t> &tuple_key_attrs,
-                        const std::vector<oid_t> &index_key_attrs) {
+static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
+                                 const std::vector<oid_t> &index_key_attrs) {
   LOG_INFO("Run query on %s ", GetOidVectorString(tuple_key_attrs).c_str());
   const bool is_inlined = true;
   auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
@@ -752,29 +772,8 @@ static void QueryHelper(const std::vector<oid_t> &tuple_key_attrs,
   txn_manager.CommitTransaction();
 }
 
-/**
- * @brief Run query depending on query type
- */
-static void RunQuery() {
 
-  switch (state.query_complexity_type) {
-    case QUERY_COMPLEXITY_TYPE_SIMPLE:
-      RunSimpleQuery();
-      break;
-    case QUERY_COMPLEXITY_TYPE_MODERATE:
-      RunModerateQuery();
-      break;
-    case QUERY_COMPLEXITY_TYPE_COMPLEX:
-      RunComplexQuery();
-      break;
-    default:
-      break;
-  }
-
-}
-
-static void RunInsert() {
-  LOG_INFO("Run Insert");
+static void InsertHelper() {
   auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
 
   auto txn = txn_manager.BeginTransaction();
@@ -831,6 +830,40 @@ static void RunInsert() {
 
   txn_manager.CommitTransaction();
 }
+
+/**
+ * @brief Run query depending on query type
+ */
+static void RunQuery() {
+
+  switch (state.query_complexity_type) {
+    case QUERY_COMPLEXITY_TYPE_SIMPLE:
+      RunSimpleQuery();
+      break;
+    case QUERY_COMPLEXITY_TYPE_MODERATE:
+      RunModerateQuery();
+      break;
+    case QUERY_COMPLEXITY_TYPE_COMPLEX:
+      RunComplexQuery();
+      break;
+    default:
+      break;
+  }
+
+}
+
+static void RunInsert() {
+  LOG_INFO("Run Insert");
+
+  // PHASE LENGTH
+  for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
+
+    InsertHelper();
+
+  }
+
+}
+
 
 void RunSDBenchTest() {
   // Setup layout tuner
