@@ -148,8 +148,8 @@ static expression::AbstractExpression *CreateScanPredicate(
   const int tuple_start_offset = GetLowerBound();
   const int tuple_end_offset = GetUpperBound();
 
-  LOG_INFO("Lower bound : %d", tuple_start_offset);
-  LOG_INFO("Upper bound : %d", tuple_end_offset);
+  LOG_TRACE("Lower bound : %d", tuple_start_offset);
+  LOG_TRACE("Upper bound : %d", tuple_end_offset);
 
   expression::AbstractExpression *predicate = nullptr;
 
@@ -251,7 +251,7 @@ static std::shared_ptr<planner::HybridScanPlan> CreateHybridScanPlan(
     hybrid_scan_type = HYBRID_SCAN_TYPE_HYBRID;
   }
 
-  LOG_INFO("Hybrid scan type : %d", hybrid_scan_type);
+  LOG_TRACE("Hybrid scan type : %d", hybrid_scan_type);
 
   std::shared_ptr<planner::HybridScanPlan> hybrid_scan_node(
       new planner::HybridScanPlan(sdbench_table.get(), predicate, column_ids,
@@ -380,7 +380,7 @@ static std::shared_ptr<index::Index> PickIndex(storage::DataTable *table,
 
     auto index = table->GetIndex(index_itr);
     UNUSED_ATTRIBUTE auto index_metadata = index->GetMetadata();
-    LOG_INFO("Available Index :: %s", index_metadata->GetInfo().c_str());
+    LOG_TRACE("Available Index :: %s", index_metadata->GetInfo().c_str());
 
     // Some attribute did not match
     if (index_attrs != query_attrs_set) {
@@ -392,8 +392,8 @@ static std::shared_ptr<index::Index> PickIndex(storage::DataTable *table,
       auto indexed_tg_count = index->GetIndexedTileGroupOffset();
       auto table_tg_count = table->GetTileGroupCount();
 
-      LOG_INFO("Indexed TG Count : %lu", indexed_tg_count);
-      LOG_INFO("Table TG Count : %lu", table_tg_count);
+      LOG_TRACE("Indexed TG Count : %lu", indexed_tg_count);
+      LOG_TRACE("Table TG Count : %lu", table_tg_count);
 
       if (indexed_tg_count < table_tg_count) {
         continue;
@@ -410,10 +410,10 @@ static std::shared_ptr<index::Index> PickIndex(storage::DataTable *table,
 
   // Found index
   if (query_index_found == true) {
-    LOG_INFO("Found available Index");
+    LOG_TRACE("Found available Index");
     index = table->GetIndex(index_itr);
   } else {
-    LOG_INFO("Did not find available index");
+    LOG_TRACE("Did not find available index");
   }
 
   return index;
@@ -440,7 +440,7 @@ static void RunSimpleQuery() {
   for (auto tuple_key_attr : tuple_key_attrs) {
     os << tuple_key_attr << " ";
   }
-  LOG_INFO("%s", os.str().c_str());
+  LOG_TRACE("%s", os.str().c_str());
 
   // PHASE LENGTH
   for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
@@ -452,7 +452,7 @@ static void RunSimpleQuery() {
 }
 
 static void RunModerateQuery() {
-  LOG_INFO("Moderate Query");
+  LOG_TRACE("Moderate Query");
 
   std::vector<oid_t> tuple_key_attrs;
   std::vector<oid_t> index_key_attrs;
@@ -470,7 +470,7 @@ static void RunModerateQuery() {
     index_key_attrs = {0};
   }
 
-  LOG_INFO("Moderate :: %s", GetOidVectorString(tuple_key_attrs).c_str());
+  LOG_TRACE("Moderate :: %s", GetOidVectorString(tuple_key_attrs).c_str());
 
   // PHASE LENGTH
   for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
@@ -485,7 +485,7 @@ static void RunModerateQuery() {
  * @details 60% join test, 30% moderate query, 10% simple query
  */
 static void RunComplexQuery() {
-  LOG_INFO("Complex Query");
+  LOG_TRACE("Complex Query");
 
   // PHASE LENGTH
   for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
@@ -512,7 +512,7 @@ static void JoinQueryHelper(const std::vector<oid_t> &left_table_tuple_key_attrs
                             const std::vector<oid_t> &right_table_index_key_attrs,
                             const oid_t left_table_join_column,
                             const oid_t right_table_join_column) {
-  LOG_INFO("Run join query on left table: %s and right table: %s",
+  LOG_TRACE("Run join query on left table: %s and right table: %s",
            GetOidVectorString(left_table_tuple_key_attrs).c_str(),
            GetOidVectorString(right_table_tuple_key_attrs).c_str());
   const bool is_inlined = true;
@@ -635,7 +635,7 @@ static void JoinQueryHelper(const std::vector<oid_t> &left_table_tuple_key_attrs
 
 static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
                                  const std::vector<oid_t> &index_key_attrs) {
-  LOG_INFO("Run query on %s ", GetOidVectorString(tuple_key_attrs).c_str());
+  LOG_TRACE("Run query on %s ", GetOidVectorString(tuple_key_attrs).c_str());
   const bool is_inlined = true;
   auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
 
@@ -807,7 +807,7 @@ static void InsertHelper() {
 
   auto bulk_insert_count = 1;
 
-  LOG_INFO("Bulk insert count : %d", bulk_insert_count);
+  LOG_TRACE("Bulk insert count : %d", bulk_insert_count);
   planner::InsertPlan insert_node(sdbench_table.get(), std::move(project_info),
                                   bulk_insert_count);
   executor::InsertExecutor insert_executor(&insert_node, context.get());
@@ -853,7 +853,7 @@ static void RunQuery() {
 }
 
 static void RunInsert() {
-  LOG_INFO("Run Insert");
+  LOG_TRACE("Run Insert");
 
   // PHASE LENGTH
   for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
