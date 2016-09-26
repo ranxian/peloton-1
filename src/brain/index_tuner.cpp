@@ -133,9 +133,6 @@ void IndexTuner::BuildIndex(storage::DataTable *table,
     // Update indexed tile group offset (set of tgs indexed)
     index->IncrementIndexedTileGroupOffset();
 
-    // Sleep a bit
-    //std::this_thread::sleep_for(std::chrono::microseconds(sleep_duration));
-
     index_tile_group_offset++;
     tile_groups_indexed++;
   }
@@ -536,6 +533,9 @@ void IndexTuner::Tune(){
       IndexTuneHelper(table);
 
     }
+
+    // Sleep a bit
+    //std::this_thread::sleep_for(std::chrono::microseconds(sleep_duration));
 
   }
 
