@@ -350,7 +350,6 @@ static void ExecuteTest(std::vector<executor::AbstractExecutor *> &executors,
     brain::Sample index_sample(index_columns,
                                duration / index_columns_accessed.size(),
                                sample_type, selectivity);
-
     // Record sample
     sdbench_table->RecordIndexSample(index_sample);
   }
@@ -947,7 +946,6 @@ static bool CheckIndexConverged() {
 
   return false;
 }
-
 
 void RunSDBenchTest() {
   const double PHASE_COUNT_LIMIT = 10000;
