@@ -74,7 +74,7 @@ class configuration {
   std::size_t phase_length;
 
   // total number of ops
-  std::size_t total_ops;
+  long total_ops;
 
   // Adapt the layout ?
   bool adapt_layout;

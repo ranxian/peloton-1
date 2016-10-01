@@ -864,8 +864,93 @@ static void RunInsert() {
 
 }
 
+/**
+ * @brief A data structure to hold index information of a table.
+ */
+struct IndexSummary {
+  // Index ids
+  std::vector<oid_t> index_oids;
+  // Index has complete built?
+  bool completed;
+};
+
+static int index_unchanged = 0;
+/**
+ * @brief Check if index scheme has converged. Determine by looking at how
+ * many times index has not been changed.
+ *
+ * @return true if the index has converged. False otherwiese.
+ */
+static bool CheckIndexConverged() {
+  static IndexSummary prev_index_summary;
+  // If the index stays the same for 10 continouse phase, it's considered as converged.
+  const static int INDEX_CONVERGE_THRESHOLD = 10;
+
+  IndexSummary index_summary;
+  index_summary.completed = true;
+
+  // Get index summary
+  oid_t index_count = sdbench_table->GetIndexCount();
+  auto table_tile_group_count = sdbench_table->GetTileGroupCount();
+  for (oid_t index_itr = 0; index_itr < index_count; index_itr++) {
+
+    // Get index
+    auto index = sdbench_table->GetIndex(index_itr);
+
+    auto indexed_tile_group_offset = index->GetIndexedTileGroupOffset();
+
+    // Get percentage completion
+    double fraction = 0.0;
+    if(table_tile_group_count != 0){
+      fraction = (double) indexed_tile_group_offset / (double) table_tile_group_count;
+      fraction *= 100;
+    }
+
+    if (fraction < 0) {
+      index_summary.completed = false;
+    }
+
+    // Get index columns
+    index_summary.index_oids.push_back(index->GetOid());
+  }
+
+  if (index_summary.completed == false) {
+    prev_index_summary = index_summary;
+    index_unchanged = 0;
+    return false;
+  }
+
+  // Check if the index summary is the same
+  bool identical = true;
+  if (index_summary.index_oids.size() == prev_index_summary.index_oids.size()) {
+    for (size_t i = 0; i < index_summary.index_oids.size(); i++) {
+      if (index_summary.index_oids[i] != prev_index_summary.index_oids[i]) {
+        identical = false;
+        break;
+      }
+    }
+  } else {
+    identical = false;
+  }
+
+  if (identical) {
+    index_unchanged += 1;
+  } else {
+    index_unchanged = 0;
+  }
+
+  prev_index_summary = index_summary;
+
+  if (index_unchanged >= INDEX_CONVERGE_THRESHOLD) {
+    return true;
+  }
+
+  return false;
+}
+
 
 void RunSDBenchTest() {
+  const double PHASE_COUNT_LIMIT = 10000;
   // Setup layout tuner
   auto &index_tuner = brain::IndexTuner::GetInstance();
   std::thread index_builder;
@@ -880,6 +965,15 @@ void RunSDBenchTest() {
   double write_ratio = state.write_ratio;
   double phase_count = state.total_ops / state.phase_length;
 
+  if (state.total_ops < 0) {
+    phase_count = PHASE_COUNT_LIMIT;
+  }
+
+  if (phase_count > PHASE_COUNT_LIMIT) {
+    LOG_INFO("Too many phases, current phase limit is %lf", PHASE_COUNT_LIMIT);
+    exit(-1);
+  }
+
   total_duration = 0;
 
   // Reset query counter
@@ -888,6 +982,12 @@ void RunSDBenchTest() {
   // Start index tuner
   index_tuner.Start();
   index_tuner.AddTable(sdbench_table.get());
+
+  Timer<> index_unchanged_timer;
+
+  index_unchanged_timer.Reset();
+  index_unchanged_timer.Start();
+
 
   for (oid_t phase_itr = 0; phase_itr < phase_count; phase_itr++) {
     double rand_sample = GetRandomSample();
@@ -901,8 +1001,23 @@ void RunSDBenchTest() {
       RunQuery();
     }
 
+    // Check index convergence
+    bool converged = CheckIndexConverged();
+
+    if (converged && state.total_ops < 0) {
+      LOG_INFO("Index converged");
+      break;
+    }
+
+    // Reset the timer
+    if (index_unchanged == 0) {
+      index_unchanged_timer.Reset();
+      index_unchanged_timer.Start();
+    }
   }
 
+  // Stop timer
+  index_unchanged_timer.Stop();
   // Stop index tuner
   index_tuner.Stop();
   index_tuner.ClearTables();
@@ -914,7 +1029,13 @@ void RunSDBenchTest() {
   state.adapt_layout = false;
   query_itr = 0;
 
-  LOG_INFO("Total Duration : %.2lf", total_duration);
+  if (state.total_ops < 0) {
+    // Substract the time since index already converged
+    LOG_INFO("Total Duration : %.2lf", total_duration);
+    LOG_INFO("Duration for convergence: %.2lf", index_unchanged_timer.GetDuration());
+  } else {
+    LOG_INFO("Total Duration : %.2lf", total_duration);
+  }
 
   out.close();
 }
