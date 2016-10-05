@@ -331,12 +331,14 @@ void IndexTuner::DropIndexes(storage::DataTable *table) {
     auto index = table->GetIndex(index_itr);
     auto index_metadata = index->GetMetadata();
     auto average_index_utility = index_metadata->GetUtility();
-    auto index_oid = index->GetOid();
+    UNUSED_ATTRIBUTE auto index_oid = index->GetOid();
 
     // Check if index utility below threshold and drop if needed
     if(average_index_utility < index_utility_threshold) {
       LOG_TRACE("Dropping index : %s", index_metadata->GetInfo().c_str());
-      table->DropIndexWithOid(index_oid);
+
+      // TODO: Uncomment this
+      //table->DropIndexWithOid(index_oid);
 
       // Update index count
       index_count = table->GetIndexCount();
