@@ -10,69 +10,69 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include <memory>
-#include <string>
-#include <unordered_map>
-#include <vector>
-#include <iostream>
-#include <ctime>
-#include <thread>
 #include <algorithm>
 #include <chrono>
+#include <ctime>
+#include <iostream>
+#include <memory>
+#include <string>
+#include <thread>
+#include <unordered_map>
+#include <vector>
 
-#include "brain/sample.h"
-#include "brain/layout_tuner.h"
 #include "brain/index_tuner.h"
+#include "brain/layout_tuner.h"
+#include "brain/sample.h"
 
-#include "benchmark/sdbench/sdbench_workload.h"
 #include "benchmark/sdbench/sdbench_loader.h"
+#include "benchmark/sdbench/sdbench_workload.h"
 
 #include "catalog/manager.h"
 #include "catalog/schema.h"
+#include "common/logger.h"
+#include "common/macros.h"
+#include "common/timer.h"
 #include "common/types.h"
 #include "common/value.h"
 #include "common/value_factory.h"
-#include "common/logger.h"
-#include "common/timer.h"
-#include "common/macros.h"
 #include "concurrency/transaction.h"
 #include "concurrency/transaction_manager_factory.h"
 
-#include "executor/executor_context.h"
 #include "executor/abstract_executor.h"
 #include "executor/aggregate_executor.h"
-#include "executor/seq_scan_executor.h"
+#include "executor/executor_context.h"
+#include "executor/hybrid_scan_executor.h"
+#include "executor/insert_executor.h"
 #include "executor/logical_tile.h"
 #include "executor/logical_tile_factory.h"
 #include "executor/materialization_executor.h"
-#include "executor/projection_executor.h"
-#include "executor/insert_executor.h"
-#include "executor/update_executor.h"
 #include "executor/nested_loop_join_executor.h"
-#include "executor/hybrid_scan_executor.h"
+#include "executor/projection_executor.h"
+#include "executor/seq_scan_executor.h"
+#include "executor/update_executor.h"
 
 #include "expression/abstract_expression.h"
-#include "expression/constant_value_expression.h"
-#include "expression/tuple_value_expression.h"
 #include "expression/comparison_expression.h"
 #include "expression/conjunction_expression.h"
+#include "expression/constant_value_expression.h"
 #include "expression/expression_util.h"
+#include "expression/tuple_value_expression.h"
 
 #include "planner/abstract_plan.h"
 #include "planner/aggregate_plan.h"
-#include "planner/materialization_plan.h"
-#include "planner/seq_scan_plan.h"
-#include "planner/insert_plan.h"
-#include "planner/update_plan.h"
-#include "planner/projection_plan.h"
-#include "planner/nested_loop_join_plan.h"
 #include "planner/hybrid_scan_plan.h"
+#include "planner/insert_plan.h"
+#include "planner/materialization_plan.h"
+#include "planner/nested_loop_join_plan.h"
+#include "planner/projection_plan.h"
+#include "planner/seq_scan_plan.h"
+#include "planner/update_plan.h"
 
+#include "storage/data_table.h"
+#include "storage/table_factory.h"
 #include "storage/tile.h"
 #include "storage/tile_group.h"
 #include "storage/tile_group_header.h"
-#include "storage/data_table.h"
-#include "storage/table_factory.h"
 
 namespace peloton {
 namespace benchmark {
@@ -85,12 +85,12 @@ static std::shared_ptr<index::Index> PickIndex(storage::DataTable *table,
 static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
                                  const std::vector<oid_t> &index_key_attrs);
 
-static void JoinQueryHelper(const std::vector<oid_t> &left_table_tuple_key_attrs,
-                            const std::vector<oid_t> &left_table_index_key_attrs,
-                            const std::vector<oid_t> &right_table_tuple_key_attrs,
-                            const std::vector<oid_t> &right_table_index_key_attrs,
-                            const oid_t left_table_join_column,
-                            const oid_t right_table_join_column);
+static void JoinQueryHelper(
+    const std::vector<oid_t> &left_table_tuple_key_attrs,
+    const std::vector<oid_t> &left_table_index_key_attrs,
+    const std::vector<oid_t> &right_table_tuple_key_attrs,
+    const std::vector<oid_t> &right_table_index_key_attrs,
+    const oid_t left_table_join_column, const oid_t right_table_join_column);
 
 // Tuple id counter
 oid_t sdbench_tuple_counter = -1000000;
@@ -260,11 +260,10 @@ static std::shared_ptr<planner::HybridScanPlan> CreateHybridScanPlan(
   return hybrid_scan_node;
 }
 
-static double GetRandomSample(){
-  return (double)rand() / RAND_MAX;
-}
+static double GetRandomSample() { return (double)rand() / RAND_MAX; }
 
-std::ofstream out("outputfile.summary");
+const static std::string OUTPUT_FILE = "outputfile.summary";
+std::ofstream out(OUTPUT_FILE);
 
 oid_t query_itr;
 
@@ -275,19 +274,13 @@ UNUSED_ATTRIBUTE static void WriteOutput(double duration) {
   duration *= 1000;
 
   // Write out output in verbose mode
-  if(state.verbose == true) {
+  if (state.verbose == true) {
     LOG_INFO("----------------------------------------------------------");
     LOG_INFO("%d %d %.3lf %.3lf %u %.1lf %d %d %d :: %.1lf ms",
-             state.index_usage_type,
-             state.query_complexity_type,
-             state.selectivity,
-             state.projectivity,
-             query_itr,
-             state.write_ratio,
-             state.scale_factor,
-             state.attribute_count,
-             state.tuples_per_tilegroup,
-             duration);
+             state.index_usage_type, state.query_complexity_type,
+             state.selectivity, state.projectivity, query_itr,
+             state.write_ratio, state.scale_factor, state.attribute_count,
+             state.tuples_per_tilegroup, duration);
   }
 
   out << state.index_usage_type << " ";
@@ -329,8 +322,7 @@ static void ExecuteTest(std::vector<executor::AbstractExecutor *> &executors,
     std::vector<std::unique_ptr<executor::LogicalTile>> result_tiles;
 
     while (executor->Execute() == true) {
-      std::unique_ptr<executor::LogicalTile> result_tile(
-          executor->GetOutput());
+      std::unique_ptr<executor::LogicalTile> result_tile(executor->GetOutput());
       result_tiles.emplace_back(result_tile.release());
     }
 
@@ -350,11 +342,9 @@ static void ExecuteTest(std::vector<executor::AbstractExecutor *> &executors,
     brain::Sample index_sample(index_columns,
                                duration / index_columns_accessed.size(),
                                sample_type, selectivity);
-
     // Record sample
     sdbench_table->RecordIndexSample(index_sample);
   }
-
 }
 
 static std::shared_ptr<index::Index> PickIndex(storage::DataTable *table,
@@ -444,11 +434,8 @@ static void RunSimpleQuery() {
 
   // PHASE LENGTH
   for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
-
     AggregateQueryHelper(tuple_key_attrs, index_key_attrs);
-
   }
-
 }
 
 static void RunModerateQuery() {
@@ -474,9 +461,7 @@ static void RunModerateQuery() {
 
   // PHASE LENGTH
   for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
-
     AggregateQueryHelper(tuple_key_attrs, index_key_attrs);
-
   }
 }
 
@@ -489,10 +474,10 @@ static void RunComplexQuery() {
 
   // PHASE LENGTH
   for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
-
     auto rand_sample = rand() % 10;
 
-    // Assume there are 20 columns, 10 for the left table, 10 for the right table
+    // Assume there are 20 columns, 10 for the left table, 10 for the right
+    // table
     if (rand_sample <= 2) {
       JoinQueryHelper({3, 4}, {0, 1}, {10, 11}, {0, 1}, 5, 12);
     } else if (rand_sample <= 5) {
@@ -502,19 +487,18 @@ static void RunComplexQuery() {
     } else {
       AggregateQueryHelper({2}, {0});
     }
-
   }
 }
 
-static void JoinQueryHelper(const std::vector<oid_t> &left_table_tuple_key_attrs,
-                            const std::vector<oid_t> &left_table_index_key_attrs,
-                            const std::vector<oid_t> &right_table_tuple_key_attrs,
-                            const std::vector<oid_t> &right_table_index_key_attrs,
-                            const oid_t left_table_join_column,
-                            const oid_t right_table_join_column) {
+static void JoinQueryHelper(
+    const std::vector<oid_t> &left_table_tuple_key_attrs,
+    const std::vector<oid_t> &left_table_index_key_attrs,
+    const std::vector<oid_t> &right_table_tuple_key_attrs,
+    const std::vector<oid_t> &right_table_index_key_attrs,
+    const oid_t left_table_join_column, const oid_t right_table_join_column) {
   LOG_TRACE("Run join query on left table: %s and right table: %s",
-           GetOidVectorString(left_table_tuple_key_attrs).c_str(),
-           GetOidVectorString(right_table_tuple_key_attrs).c_str());
+            GetOidVectorString(left_table_tuple_key_attrs).c_str(),
+            GetOidVectorString(right_table_tuple_key_attrs).c_str());
   const bool is_inlined = true;
   auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
 
@@ -563,9 +547,8 @@ static void JoinQueryHelper(const std::vector<oid_t> &left_table_tuple_key_attrs
                                            right_table_join_column);
 
   std::unique_ptr<expression::ComparisonExpression<expression::CmpLt>>
-  join_predicate(new expression::ComparisonExpression<expression::CmpLt>(
-      EXPRESSION_TYPE_COMPARE_LESSTHAN, left_table_attr,
-      right_table_attr));
+      join_predicate(new expression::ComparisonExpression<expression::CmpLt>(
+          EXPRESSION_TYPE_COMPARE_LESSTHAN, left_table_attr, right_table_attr));
 
   std::unique_ptr<const planner::ProjectInfo> project_info(nullptr);
   std::shared_ptr<const catalog::Schema> schema(nullptr);
@@ -696,7 +679,7 @@ static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
         EXPRESSION_TYPE_AGGREGATE_MAX,
         expression::ExpressionUtil::TupleValueFactory(VALUE_TYPE_INTEGER, 0,
                                                       column_id),
-                                                      false);
+        false);
     agg_terms.push_back(max_column_agg);
   }
 
@@ -772,7 +755,6 @@ static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
   txn_manager.CommitTransaction();
 }
 
-
 static void InsertHelper() {
   auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
 
@@ -836,7 +818,6 @@ static void InsertHelper() {
  * @brief Run query depending on query type
  */
 static void RunQuery() {
-
   switch (state.query_complexity_type) {
     case QUERY_COMPLEXITY_TYPE_SIMPLE:
       RunSimpleQuery();
@@ -850,7 +831,6 @@ static void RunQuery() {
     default:
       break;
   }
-
 }
 
 static void RunInsert() {
@@ -858,15 +838,133 @@ static void RunInsert() {
 
   // PHASE LENGTH
   for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
-
     InsertHelper();
-
   }
-
 }
 
+/**
+ * @brief A data structure to hold index information of a table.
+ */
+struct IndexSummary {
+  // Index ids
+  std::vector<oid_t> index_oids;
+  // Index has complete built?
+  bool completed;
+};
+
+static int index_unchanged = 0;
+const static int INDEX_CONVERGE_THRESHOLD = 10;
+/**
+ * @brief Check if index scheme has converged. Determine by looking at how
+ * many times index has not been changed.
+ *
+ * @return true if the index has converged. False otherwiese.
+ */
+static bool CheckIndexConverged() {
+  static IndexSummary prev_index_summary;
+  // If the index stays the same for 10 continouse phase, it's considered as
+  // converged.
+
+  IndexSummary index_summary;
+  index_summary.completed = true;
+
+  // Get index summary
+  oid_t index_count = sdbench_table->GetIndexCount();
+  auto table_tile_group_count = sdbench_table->GetTileGroupCount();
+  for (oid_t index_itr = 0; index_itr < index_count; index_itr++) {
+    // Get index
+    auto index = sdbench_table->GetIndex(index_itr);
+
+    auto indexed_tile_group_offset = index->GetIndexedTileGroupOffset();
+
+    // Get percentage completion
+    double fraction = 0.0;
+    if (table_tile_group_count != 0) {
+      fraction =
+          (double)indexed_tile_group_offset / (double)table_tile_group_count;
+      fraction *= 100;
+    }
+
+    if (fraction < 0) {
+      index_summary.completed = false;
+    }
+
+    // Get index columns
+    index_summary.index_oids.push_back(index->GetOid());
+  }
+
+  if (index_summary.completed == false) {
+    prev_index_summary = index_summary;
+    index_unchanged = 0;
+    return false;
+  }
+
+  // Check if the index summary is the same
+  bool identical = true;
+  if (index_summary.index_oids.size() == prev_index_summary.index_oids.size()) {
+    for (size_t i = 0; i < index_summary.index_oids.size(); i++) {
+      if (index_summary.index_oids[i] != prev_index_summary.index_oids[i]) {
+        identical = false;
+        break;
+      }
+    }
+  } else {
+    identical = false;
+  }
+
+  if (identical) {
+    index_unchanged += 1;
+  } else {
+    index_unchanged = 0;
+  }
+
+  prev_index_summary = index_summary;
+
+  if (index_unchanged >= INDEX_CONVERGE_THRESHOLD) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * @brief Truncate the first or last N lines from the file. This function is
+ * currently used for removing converge time from totol duration.
+ *
+ * @param filename The name of the file, the file must exist
+ * @param N Number of lines to bre removed.
+ * @param reverse Truncate from the reverse or not
+ */
+UNUSED_ATTRIBUTE static void TruncateLines(const std::string &filename, size_t N,
+                          bool reverse = false) {
+  std::vector<std::string> lines;
+  std::ifstream file(filename);
+  std::string line;
+  while (std::getline(file, line)) {
+    lines.push_back(line);
+  }
+  file.close();
+
+  if (N > lines.size()) {
+    LOG_ERROR("Does not have enough lines to truncate");
+  }
+
+  size_t start = 0, end = lines.size();
+  if (reverse) {
+    end -= N;
+  } else {
+    start += N;
+  }
+
+  std::ofstream ofile(filename);
+  for (size_t i = start; i < end; i++) {
+    ofile << lines[i] << std::endl;
+  }
+  ofile.close();
+}
 
 void RunSDBenchTest() {
+  const double PHASE_COUNT_LIMIT = 10000;
   // Setup layout tuner
   auto &index_tuner = brain::IndexTuner::GetInstance();
   std::thread index_builder;
@@ -881,6 +979,15 @@ void RunSDBenchTest() {
   double write_ratio = state.write_ratio;
   double phase_count = state.total_ops / state.phase_length;
 
+  if (state.total_ops < 0) {
+    phase_count = PHASE_COUNT_LIMIT;
+  }
+
+  if (phase_count > PHASE_COUNT_LIMIT) {
+    LOG_INFO("Too many phases, current phase limit is %lf", PHASE_COUNT_LIMIT);
+    exit(-1);
+  }
+
   total_duration = 0;
 
   // Reset query counter
@@ -889,6 +996,11 @@ void RunSDBenchTest() {
   // Start index tuner
   index_tuner.Start();
   index_tuner.AddTable(sdbench_table.get());
+
+  Timer<> index_unchanged_timer;
+
+  index_unchanged_timer.Reset();
+  index_unchanged_timer.Start();
 
   for (oid_t phase_itr = 0; phase_itr < phase_count; phase_itr++) {
     double rand_sample = GetRandomSample();
@@ -902,8 +1014,23 @@ void RunSDBenchTest() {
       RunQuery();
     }
 
+    // Check index convergence
+    bool converged = CheckIndexConverged();
+
+    if (converged && state.total_ops < 0) {
+      LOG_INFO("Index converged");
+      break;
+    }
+
+    // Reset the timer
+    if (index_unchanged == 0) {
+      index_unchanged_timer.Reset();
+      index_unchanged_timer.Start();
+    }
   }
 
+  // Stop timer
+  index_unchanged_timer.Stop();
   // Stop index tuner
   index_tuner.Stop();
   index_tuner.ClearTables();
@@ -916,8 +1043,17 @@ void RunSDBenchTest() {
   query_itr = 0;
 
   LOG_INFO("Total Duration : %.2lf", total_duration);
+  if (state.total_ops < 0) {
+    LOG_INFO("Duration for convergence: %.2lf",
+             index_unchanged_timer.GetDuration());
+  }
 
   out.close();
+
+  // If test for convergence, truncate the last INDEX_CONVERGE_THRESHOLD *
+  // phase_length lines
+  TruncateLines(OUTPUT_FILE, INDEX_CONVERGE_THRESHOLD * state.phase_length,
+                true);
 }
 
 }  // namespace sdbench
