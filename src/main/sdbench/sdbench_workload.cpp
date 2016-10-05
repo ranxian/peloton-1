@@ -805,7 +805,8 @@ static void InsertHelper() {
       new planner::ProjectInfo(std::move(target_list),
                                std::move(direct_map_list)));
 
-  auto bulk_insert_count = 1;
+  auto table_tuple_count = state.tuples_per_tilegroup * state.scale_factor;
+  auto bulk_insert_count = state.selectivity * table_tuple_count;
 
   LOG_TRACE("Bulk insert count : %d", bulk_insert_count);
   planner::InsertPlan insert_node(sdbench_table.get(), std::move(project_info),
