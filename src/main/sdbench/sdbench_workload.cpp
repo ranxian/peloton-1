@@ -413,15 +413,39 @@ static void RunSimpleQuery() {
   std::vector<oid_t> tuple_key_attrs;
   std::vector<oid_t> index_key_attrs;
 
-  auto rand_sample = rand() % 10;
-  if (rand_sample <= 3) {
-    tuple_key_attrs = {4};
+  auto rand_sample = rand() % 25;
+  if (rand_sample <= 5) {
+    tuple_key_attrs = {1};
     index_key_attrs = {0};
-  } else if (rand_sample <= 6) {
+  } else if (rand_sample <= 9) {
+    tuple_key_attrs = {2};
+    index_key_attrs = {0};
+  } else if (rand_sample <= 11) {
     tuple_key_attrs = {3};
     index_key_attrs = {0};
+  } else if (rand_sample <= 15) {
+    tuple_key_attrs = {4};
+    index_key_attrs = {0};
+  } else if (rand_sample <= 17) {
+    tuple_key_attrs = {5};
+    index_key_attrs = {0};
+  } else if (rand_sample <= 18) {
+    tuple_key_attrs = {6};
+    index_key_attrs = {0};
+  } else if (rand_sample <= 19) {
+    tuple_key_attrs = {7};
+    index_key_attrs = {0};
+  } else if (rand_sample <= 20) {
+    tuple_key_attrs = {8};
+    index_key_attrs = {0};
+  } else if (rand_sample <= 21) {
+    tuple_key_attrs = {9};
+    index_key_attrs = {0};
+  } else if (rand_sample <= 23) {
+    tuple_key_attrs = {10};
+    index_key_attrs = {0};
   } else {
-    tuple_key_attrs = {2};
+    tuple_key_attrs = {11};
     index_key_attrs = {0};
   }
 
@@ -444,17 +468,40 @@ static void RunModerateQuery() {
   std::vector<oid_t> tuple_key_attrs;
   std::vector<oid_t> index_key_attrs;
 
-  auto rand_sample = rand() % 10;
-
-  if (rand_sample <= 3) {
-    tuple_key_attrs = {3, 4};
+  auto rand_sample = rand() % 25;
+  if (rand_sample <= 5) {
+    tuple_key_attrs = {2, 5};
     index_key_attrs = {0, 1};
-  } else if (rand_sample <= 6) {
-    tuple_key_attrs = {3, 6};
+  } else if (rand_sample <= 9) {
+    tuple_key_attrs = {2, 8};
     index_key_attrs = {0, 1};
+  } else if (rand_sample <= 11) {
+    tuple_key_attrs = {3, 5};
+    index_key_attrs = {0, 1};
+  } else if (rand_sample <= 15) {
+    tuple_key_attrs = {2, 3, 8};
+    index_key_attrs = {0, 1, 2};
+  } else if (rand_sample <= 17) {
+    tuple_key_attrs = {2, 3, 5, 8};
+    index_key_attrs = {0, 1, 2, 3};
+  } else if (rand_sample <= 18) {
+    tuple_key_attrs = {6, 9};
+    index_key_attrs = {0, 1};
+  } else if (rand_sample <= 19) {
+    tuple_key_attrs = {6, 7};
+    index_key_attrs = {0, 1};
+  } else if (rand_sample <= 20) {
+    tuple_key_attrs = {5, 8};
+    index_key_attrs = {0, 1};
+  } else if (rand_sample <= 21) {
+    tuple_key_attrs = {5, 6, 7};
+    index_key_attrs = {0, 1, 2};
+  } else if (rand_sample <= 23) {
+    tuple_key_attrs = {3, 4, 5, 6, 7};
+    index_key_attrs = {0, 1, 2, 3, 4};
   } else {
-    tuple_key_attrs = {2};
-    index_key_attrs = {0};
+    tuple_key_attrs = {3, 4, 5};
+    index_key_attrs = {0, 1, 2};
   }
 
   LOG_TRACE("Moderate :: %s", GetOidVectorString(tuple_key_attrs).c_str());
@@ -547,8 +594,8 @@ static void JoinQueryHelper(
                                            right_table_join_column);
 
   std::unique_ptr<expression::ComparisonExpression<expression::CmpLt>>
-      join_predicate(new expression::ComparisonExpression<expression::CmpLt>(
-          EXPRESSION_TYPE_COMPARE_LESSTHAN, left_table_attr, right_table_attr));
+  join_predicate(new expression::ComparisonExpression<expression::CmpLt>(
+      EXPRESSION_TYPE_COMPARE_LESSTHAN, left_table_attr, right_table_attr));
 
   std::unique_ptr<const planner::ProjectInfo> project_info(nullptr);
   std::shared_ptr<const catalog::Schema> schema(nullptr);
@@ -679,7 +726,7 @@ static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
         EXPRESSION_TYPE_AGGREGATE_MAX,
         expression::ExpressionUtil::TupleValueFactory(VALUE_TYPE_INTEGER, 0,
                                                       column_id),
-        false);
+                                                      false);
     agg_terms.push_back(max_column_agg);
   }
 
@@ -936,7 +983,7 @@ static bool CheckIndexConverged() {
  * @param reverse Truncate from the reverse or not
  */
 UNUSED_ATTRIBUTE static void TruncateLines(const std::string &filename, size_t N,
-                          bool reverse = false) {
+                                           bool reverse = false) {
   std::vector<std::string> lines;
   std::ifstream file(filename);
   std::string line;
