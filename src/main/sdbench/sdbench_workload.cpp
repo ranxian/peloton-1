@@ -1043,6 +1043,7 @@ void RunSDBenchTest() {
   query_itr = 0;
 
   LOG_INFO("Total Duration : %.2lf", total_duration);
+  // Convergence test
   if (state.total_ops < 0) {
     LOG_INFO("Duration for convergence: %.2lf",
              index_unchanged_timer.GetDuration());
@@ -1050,10 +1051,12 @@ void RunSDBenchTest() {
 
   out.close();
 
-  // If test for convergence, truncate the last INDEX_CONVERGE_THRESHOLD *
-  // phase_length lines
-  TruncateLines(OUTPUT_FILE, INDEX_CONVERGE_THRESHOLD * state.phase_length,
-                true);
+  // Convergence test
+  if (state.total_ops < 0) {
+    // truncate the last INDEX_CONVERGE_THRESHOLD * phase_length lines
+    TruncateLines(OUTPUT_FILE, INDEX_CONVERGE_THRESHOLD * state.phase_length,
+                  true);
+  }
 }
 
 }  // namespace sdbench
