@@ -32,7 +32,7 @@ void Usage() {
       "   -w --write_ratio           :  Fraction of writes\n"
       "   -g --tuples_per_tg         :  # of tuples per tilegroup\n"
       "   -t --phase_length          :  Length of a phase\n"
-      "   -q --total_ops             :  Total # of ops\n"
+      "   -q --total_ops             :  Total # of ops, specify -1 to run until converge\n"
       "   -s --selectivity           :  Selectivity\n"
       "   -p --projectivity          :  Projectivity\n"
       "   -l --layout                :  Layout\n"
@@ -179,12 +179,12 @@ static void ValidateWriteRatio(const configuration &state) {
 }
 
 static void ValidateTotalOps(const configuration &state) {
-  if (state.total_ops <= 0) {
+  if (state.total_ops <= 0 && state.total_ops != -1) {
     LOG_ERROR("Invalid total_ops :: %lu", state.total_ops);
     exit(EXIT_FAILURE);
   }
 
-  LOG_INFO("%s : %lu", "total_ops", state.total_ops);
+  LOG_INFO("%s : %ld", "total_ops", state.total_ops);
 }
 
 static void ValidatePhaseLength(const configuration &state) {
