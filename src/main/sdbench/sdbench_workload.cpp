@@ -519,22 +519,120 @@ static void RunModerateQuery() {
 static void RunComplexQuery() {
   LOG_TRACE("Complex Query");
 
+  std::vector<oid_t> left_table_tuple_key_attrs;
+  std::vector<oid_t> left_table_index_key_attrs;
+  std::vector<oid_t> right_table_tuple_key_attrs;
+  std::vector<oid_t> right_table_index_key_attrs;
+  oid_t left_table_join_column;
+  oid_t right_table_join_column;
+
+  std::vector<oid_t> tuple_key_attrs;
+  std::vector<oid_t> index_key_attrs;
+
+  bool is_join_query = false;
+  bool is_aggregate_query = false;
+
+  // Assume there are 20 columns,
+  // 10 for the left table, 10 for the right table
+  auto rand_sample = rand() % 25;
+  if (rand_sample <= 5) {
+    left_table_tuple_key_attrs = {3, 4};
+    left_table_index_key_attrs = {0, 1};
+    right_table_tuple_key_attrs = {10, 11};
+    right_table_index_key_attrs = {0, 1};
+    left_table_join_column = 5;
+    right_table_join_column = 12;
+    is_join_query = true;
+  } else if (rand_sample <= 9) {
+    left_table_tuple_key_attrs = {3, 5};
+    left_table_index_key_attrs = {0, 1};
+    right_table_tuple_key_attrs = {10, 12};
+    right_table_index_key_attrs = {0, 1};
+    left_table_join_column = 4;
+    right_table_join_column = 11;
+    is_join_query = true;
+  } else if (rand_sample <= 11) {
+    left_table_tuple_key_attrs = {3, 4, 5};
+    left_table_index_key_attrs = {0, 1, 2};
+    right_table_tuple_key_attrs = {10, 11, 12};
+    right_table_index_key_attrs = {0, 1, 2};
+    left_table_join_column = 6;
+    right_table_join_column = 13;
+    is_join_query = true;
+  } else if (rand_sample <= 15) {
+    left_table_tuple_key_attrs = {3};
+    left_table_index_key_attrs = {0};
+    right_table_tuple_key_attrs = {10};
+    right_table_index_key_attrs = {0};
+    left_table_join_column = 5;
+    right_table_join_column = 12;
+    is_join_query = true;
+  } else if (rand_sample <= 17) {
+    left_table_tuple_key_attrs = {5, 6, 7, 8};
+    left_table_index_key_attrs = {0, 1, 2, 3};
+    right_table_tuple_key_attrs = {12, 13};
+    right_table_index_key_attrs = {0, 1};
+    left_table_join_column = 4;
+    right_table_join_column = 11;
+    is_join_query = true;
+  } else if (rand_sample <= 18) {
+    tuple_key_attrs = {3, 4};
+    index_key_attrs = {0, 1};
+    is_aggregate_query = true;
+  } else if (rand_sample <= 19) {
+    tuple_key_attrs = {6};
+    index_key_attrs = {0};
+    is_aggregate_query = true;
+  } else if (rand_sample <= 20) {
+    tuple_key_attrs = {5, 8};
+    index_key_attrs = {0, 1};
+    is_aggregate_query = true;
+  } else if (rand_sample <= 21) {
+    tuple_key_attrs = {5, 6, 7};
+    index_key_attrs = {0, 1, 2};
+    is_aggregate_query = true;
+  } else if (rand_sample <= 23) {
+    tuple_key_attrs = {3, 4, 5, 6, 7};
+    index_key_attrs = {0, 1, 2, 3, 4};
+    is_aggregate_query = true;
+  } else {
+    tuple_key_attrs = {3, 4, 5};
+    index_key_attrs = {0, 1, 2};
+    is_aggregate_query = true;
+  }
+
+  if (is_join_query == true) {
+    LOG_TRACE("Complex :: %s", GetOidVectorString(tuple_key_attrs).c_str());
+  }
+  else if (is_aggregate_query == true) {
+    LOG_TRACE("Complex :: %s", GetOidVectorString(left_table_tuple_key_attrs + right_table_tuple_key_attrs).c_str());
+  }
+  else {
+    LOG_ERROR("Invalid query \n");
+    return;
+  }
+
   // PHASE LENGTH
   for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
-    auto rand_sample = rand() % 10;
-
-    // Assume there are 20 columns, 10 for the left table, 10 for the right
-    // table
-    if (rand_sample <= 2) {
-      JoinQueryHelper({3, 4}, {0, 1}, {10, 11}, {0, 1}, 5, 12);
-    } else if (rand_sample <= 5) {
-      JoinQueryHelper({3, 6}, {0, 1}, {10, 14}, {0, 1}, 4, 13);
-    } else if (rand_sample <= 8) {
-      AggregateQueryHelper({3, 4}, {0, 1});
-    } else {
-      AggregateQueryHelper({2}, {0});
+    // Invoke appropriate query
+    if (is_join_query == true) {
+      JoinQueryHelper(left_table_tuple_key_attrs,
+                      left_table_index_key_attrs,
+                      right_table_tuple_key_attrs,
+                      right_table_index_key_attrs,
+                      left_table_join_column,
+                      right_table_join_column);
+    }
+    else if (is_aggregate_query == true) {
+      AggregateQueryHelper(tuple_key_attrs,
+                           index_key_attrs);
+    }
+    else {
+      LOG_ERROR("Invalid query \n");
+      return;
     }
   }
+
 }
 
 static void JoinQueryHelper(
@@ -542,7 +640,8 @@ static void JoinQueryHelper(
     const std::vector<oid_t> &left_table_index_key_attrs,
     const std::vector<oid_t> &right_table_tuple_key_attrs,
     const std::vector<oid_t> &right_table_index_key_attrs,
-    const oid_t left_table_join_column, const oid_t right_table_join_column) {
+    const oid_t left_table_join_column,
+    const oid_t right_table_join_column) {
   LOG_TRACE("Run join query on left table: %s and right table: %s",
             GetOidVectorString(left_table_tuple_key_attrs).c_str(),
             GetOidVectorString(right_table_tuple_key_attrs).c_str());
@@ -559,8 +658,8 @@ static void JoinQueryHelper(
       new executor::ExecutorContext(txn));
 
   // Column ids to be added to logical tile after scan.
-  // Left half of the columns are considered left table, right half of the
-  // columns are considered right table.
+  // Left half of the columns are considered left table,
+  // right half of the columns are considered right table.
   std::vector<oid_t> column_ids;
   oid_t column_count = state.attribute_count;
 
@@ -665,7 +764,7 @@ static void JoinQueryHelper(
 
 static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
                                  const std::vector<oid_t> &index_key_attrs) {
-  LOG_TRACE("Run query on %s ", GetOidVectorString(tuple_key_attrs).c_str());
+  LOG_TRACE("Run aggregate query on %s ", GetOidVectorString(tuple_key_attrs).c_str());
   const bool is_inlined = true;
   auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
 

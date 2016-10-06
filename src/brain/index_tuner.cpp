@@ -348,7 +348,6 @@ void IndexTuner::DropIndexes(storage::DataTable *table) {
 
 }
 
-
 void AddIndexes(storage::DataTable *table,
                 const std::vector<std::vector<double>>& suggested_indices,
                 size_t max_allowed_indexes) {
@@ -497,7 +496,7 @@ void IndexTuner::Analyze(storage::DataTable* table) {
   UpdateIndexUtility(table, sample_frequency_entry_list);
 
   // Display index information
-  PrintIndexInformation(table);
+  //PrintIndexInformation(table);
 
 }
 
