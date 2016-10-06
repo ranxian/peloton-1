@@ -28,9 +28,12 @@ namespace sdbench {
 enum IndexUsageType {
   INDEX_USAGE_TYPE_INVALID = 0,
 
-  INDEX_USAGE_TYPE_INCREMENTAL = 1, // use partial indexes
-  INDEX_USAGE_TYPE_FULL = 2, // use full indexes
-  INDEX_USAGE_TYPE_NEVER = 3 // don't use indexes (no online tuning)
+  INDEX_USAGE_TYPE_AGGRESSIVE = 1,   // use partial indexes aggressively
+  INDEX_USAGE_TYPE_BALANCED = 2,     // use partial indexes balanced
+  INDEX_USAGE_TYPE_CONSERVATIVE = 3, // use partial indexes conservatively
+  INDEX_USAGE_TYPE_NEVER = 4,        // don't use indexes (no online tuning)
+
+  INDEX_USAGE_TYPE_FULL = 5,         // only use full indexes
 };
 
 enum QueryComplexityType {
@@ -84,6 +87,15 @@ class configuration {
 
   // Verbose output
   bool verbose;
+
+  // INDEX TUNER PARAMETERS
+
+  // sample count threshold after which "a" tuning iteration takes place
+  oid_t sample_count_threshold;
+
+  // max tile groups indexed per tuning iteration per table
+  oid_t max_tile_groups_indexed;
+
 };
 
 void Usage(FILE *out);

@@ -24,19 +24,21 @@ namespace sdbench {
 void Usage() {
   LOG_INFO("\n"
       "Command line options : sdbench <options>\n"
-      "   -h --help                  :  Print help message\n"
-      "   -f --index_usage_type      :  Types of indexes used\n"
-      "   -c --query_complexity_type :  Complexity of query\n"
-      "   -k --scale-factor          :  # of tile groups\n"
-      "   -a --attribute_count       :  # of attributes\n"
-      "   -w --write_ratio           :  Fraction of writes\n"
-      "   -g --tuples_per_tg         :  # of tuples per tilegroup\n"
-      "   -t --phase_length          :  Length of a phase\n"
-      "   -q --total_ops             :  Total # of ops, specify -1 to run until converge\n"
-      "   -s --selectivity           :  Selectivity\n"
-      "   -p --projectivity          :  Projectivity\n"
-      "   -l --layout                :  Layout\n"
-      "   -v --verbose               :  Output verbosity\n"
+      "   -h --help                    :  Print help message\n"
+      "   -f --index_usage_type        :  Types of indexes used\n"
+      "   -c --query_complexity_type   :  Complexity of query\n"
+      "   -k --scale-factor            :  # of tile groups\n"
+      "   -a --attribute_count         :  # of attributes\n"
+      "   -w --write_ratio             :  Fraction of writes\n"
+      "   -g --tuples_per_tg           :  # of tuples per tilegroup\n"
+      "   -t --phase_length            :  Length of a phase\n"
+      "   -q --total_ops               :  Total # of ops, specify -1 to run until converge\n"
+      "   -s --selectivity             :  Selectivity\n"
+      "   -p --projectivity            :  Projectivity\n"
+      "   -l --layout                  :  Layout\n"
+      "   -e --sample_count_threshold  :  Sample count threshold\n"
+      "   -m --max_tile_groups_indexed :  Max tile groups indexed\n"
+      "   -v --verbose                 :  Output verbosity\n"
   );
   exit(EXIT_FAILURE);
 }
@@ -70,14 +72,20 @@ void GenerateSequence(oid_t column_count) {
 
 
 static void ValidateIndexUsageType(const configuration &state) {
-  if (state.index_usage_type < 1 || state.index_usage_type > 3) {
+  if (state.index_usage_type < 1 || state.index_usage_type > 5) {
       LOG_ERROR("Invalid index_usage_type :: %d", state.index_usage_type);
       exit(EXIT_FAILURE);
   }
   else {
       switch (state.index_usage_type) {
-        case INDEX_USAGE_TYPE_INCREMENTAL:
-          LOG_INFO("%s : INCREMENTAL", "index_usage_type ");
+        case INDEX_USAGE_TYPE_CONSERVATIVE:
+          LOG_INFO("%s : CONSERVATIVE", "index_usage_type ");
+          break;
+        case INDEX_USAGE_TYPE_BALANCED:
+          LOG_INFO("%s : BALANCED", "index_usage_type ");
+          break;
+        case INDEX_USAGE_TYPE_AGGRESSIVE:
+          LOG_INFO("%s : AGGRESSIVE", "index_usage_type ");
           break;
         case INDEX_USAGE_TYPE_FULL:
           LOG_INFO("%s : FULL", "index_usage_type ");
@@ -205,34 +213,62 @@ static void ValidateTuplesPerTileGroup(const configuration &state) {
   LOG_INFO("%s : %d", "tuples_per_tilegroup", state.tuples_per_tilegroup);
 }
 
+static void ValidateSampleCountThreshold(const configuration &state) {
+  if (state.sample_count_threshold <= 0) {
+    LOG_ERROR("Invalid sample_count_threshold :: %u", state.sample_count_threshold);
+    exit(EXIT_FAILURE);
+  }
+
+  LOG_INFO("%s : %u", "sample_count_threshold", state.sample_count_threshold);
+}
+
+static void ValidateMaxTileGroupsIndexed(const configuration &state) {
+  if (state.max_tile_groups_indexed <= 0) {
+    LOG_ERROR("Invalid max_tile_groups_indexed :: %u", state.max_tile_groups_indexed);
+    exit(EXIT_FAILURE);
+  }
+
+  LOG_INFO("%s : %u", "max_tile_groups_indexed", state.max_tile_groups_indexed);
+}
+
 void ParseArguments(int argc, char *argv[], configuration &state) {
 
   // Default Values
-  state.index_usage_type = INDEX_USAGE_TYPE_INCREMENTAL;
+  state.index_usage_type = INDEX_USAGE_TYPE_AGGRESSIVE;
   state.query_complexity_type = QUERY_COMPLEXITY_TYPE_SIMPLE;
 
+  // Scale and attribute count
   state.scale_factor = 100.0;
   state.attribute_count = 20;
 
   state.write_ratio = 0.0;
   state.tuples_per_tilegroup = DEFAULT_TUPLES_PER_TILEGROUP;
 
+  // Phase parameters
   state.total_ops = 1;
   state.phase_length = 1;
 
+  // Query parameters
   state.selectivity = 0.001;
   state.projectivity = 1.0;
+
+  // Layout parameter
   state.layout_mode = LAYOUT_TYPE_ROW;
 
+  // Adapt parameters
   state.adapt_layout = false;
   state.adapt_indexes = true;
+
+  // Learning rate
+  state.sample_count_threshold = 10;
+  state.max_tile_groups_indexed = 10;
 
   state.verbose = false;
 
   // Parse args
   while (1) {
     int idx = 0;
-    int c = getopt_long(argc, argv, "hf:c:k:a:w:g:y:q:t:s:p:l:v:", opts, &idx);
+    int c = getopt_long(argc, argv, "hf:c:k:a:w:g:y:q:t:s:p:l:v:e:m:", opts, &idx);
 
     if (c == -1) break;
 
@@ -270,6 +306,12 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
       case 'l':
         state.layout_mode = (LayoutType)atoi(optarg);
         break;
+      case 'e':
+        state.sample_count_threshold = atoi(optarg);
+        break;
+      case 'm':
+        state.max_tile_groups_indexed = atoi(optarg);
+        break;
       case 'v':
         state.verbose = atoi(optarg);
         break;
@@ -295,6 +337,20 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   ValidateSelectivity(state);
   ValidateProjectivity(state);
   ValidateLayout(state);
+
+  // Setup learning rate based on index usage type
+  if(state.index_usage_type == INDEX_USAGE_TYPE_CONSERVATIVE) {
+    state.sample_count_threshold = 50;
+  }
+  else if(state.index_usage_type == INDEX_USAGE_TYPE_BALANCED) {
+    state.sample_count_threshold = 10;
+  }
+  else if(state.index_usage_type == INDEX_USAGE_TYPE_AGGRESSIVE) {
+    state.sample_count_threshold = 5;
+  }
+
+  ValidateSampleCountThreshold(state);
+  ValidateMaxTileGroupsIndexed(state);
 
 }
 

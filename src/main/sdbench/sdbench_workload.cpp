@@ -292,7 +292,7 @@ UNUSED_ATTRIBUTE static void WriteOutput(double duration) {
   out << state.scale_factor << " ";
   out << state.attribute_count << " ";
   out << state.tuples_per_tilegroup << " ";
-  out << duration << "\n";
+  out << std::fixed << std::setprecision(2) << duration << "\n";
 
   out.flush();
 }
@@ -1111,8 +1111,12 @@ UNUSED_ATTRIBUTE static void TruncateLines(const std::string &filename, size_t N
 
 void RunSDBenchTest() {
   const double PHASE_COUNT_LIMIT = 10000;
-  // Setup layout tuner
+
+  // Setup index tuner
   auto &index_tuner = brain::IndexTuner::GetInstance();
+  index_tuner.SetSampleCountThreshold(state.sample_count_threshold);
+  index_tuner.SetMaxTileGroupsIndexed(state.max_tile_groups_indexed);
+
   std::thread index_builder;
 
   peloton_layout_mode = state.layout_mode;

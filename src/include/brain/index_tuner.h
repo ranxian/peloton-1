@@ -68,6 +68,14 @@ class IndexTuner {
   // Clear list
   void ClearTables();
 
+  void SetSampleCountThreshold(const oid_t& sample_count_threshold_){
+    sample_count_threshold = sample_count_threshold_;
+  }
+
+  void SetMaxTileGroupsIndexed(const oid_t& max_tile_groups_indexed_){
+    max_tile_groups_indexed = max_tile_groups_indexed_;
+  }
+
  protected:
 
   // Index tuning helper
