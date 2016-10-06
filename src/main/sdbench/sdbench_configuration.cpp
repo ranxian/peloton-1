@@ -38,6 +38,7 @@ void Usage() {
       "   -l --layout                  :  Layout\n"
       "   -e --sample_count_threshold  :  Sample count threshold\n"
       "   -m --max_tile_groups_indexed :  Max tile groups indexed\n"
+      "   -o --convergence             :  Convergence\n"
       "   -v --verbose                 :  Output verbosity\n"
   );
   exit(EXIT_FAILURE);
@@ -55,6 +56,9 @@ static struct option opts[] = {
     {"selectivity", optional_argument, NULL, 's'},
     {"projectivity", optional_argument, NULL, 'p'},
     {"layout", optional_argument, NULL, 'l'},
+    {"sample_count_threshold", optional_argument, NULL, 'e'},
+    {"max_tile_groups_indexed", optional_argument, NULL, 'm'},
+    {"convergence", optional_argument, NULL, 'o'},
     {"verbose", optional_argument, NULL, 'v'},
     {NULL, 0, NULL, 0}
 };
@@ -187,7 +191,7 @@ static void ValidateWriteRatio(const configuration &state) {
 }
 
 static void ValidateTotalOps(const configuration &state) {
-  if (state.total_ops <= 0 && state.total_ops != -1) {
+  if (state.total_ops <= 0) {
     LOG_ERROR("Invalid total_ops :: %lu", state.total_ops);
     exit(EXIT_FAILURE);
   }
@@ -231,6 +235,12 @@ static void ValidateMaxTileGroupsIndexed(const configuration &state) {
   LOG_INFO("%s : %u", "max_tile_groups_indexed", state.max_tile_groups_indexed);
 }
 
+static void ValidateConvergence(const configuration &state) {
+  if (state.convergence == true) {
+    LOG_INFO("%s : %s", "convergence", "true");
+  }
+}
+
 void ParseArguments(int argc, char *argv[], configuration &state) {
 
   // Default Values
@@ -264,11 +274,12 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   state.max_tile_groups_indexed = 10;
 
   state.verbose = false;
+  state.convergence = false;
 
   // Parse args
   while (1) {
     int idx = 0;
-    int c = getopt_long(argc, argv, "hf:c:k:a:w:g:y:q:t:s:p:l:v:e:m:", opts, &idx);
+    int c = getopt_long(argc, argv, "hf:c:k:a:w:g:y:q:t:s:p:l:v:e:m:o:", opts, &idx);
 
     if (c == -1) break;
 
@@ -315,6 +326,9 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
       case 'v':
         state.verbose = atoi(optarg);
         break;
+      case 'o':
+        state.convergence = atoi(optarg);
+        break;
 
       case 'h':
         Usage();
@@ -351,6 +365,7 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
 
   ValidateSampleCountThreshold(state);
   ValidateMaxTileGroupsIndexed(state);
+  ValidateConvergence(state);
 
 }
 

@@ -992,24 +992,27 @@ static void RunInsert() {
  * @brief A data structure to hold index information of a table.
  */
 struct IndexSummary {
-  // Index ids
+  // Index oids
   std::vector<oid_t> index_oids;
+
   // Index has complete built?
   bool completed;
 };
 
-static int index_unchanged = 0;
-const static int INDEX_CONVERGE_THRESHOLD = 10;
+static int index_unchanged_phase_count = 0;
+const static int convergence_query_count_threshold = 200;
+
 /**
- * @brief Check if index scheme has converged. Determine by looking at how
- * many times index has not been changed.
+ * @brief Check if index scheme has converged.
+ * Determine by looking at how many times index has not been changed.
  *
- * @return true if the index has converged. False otherwiese.
+ * @return true if the index configuration has converged. False otherwise.
  */
-static bool CheckIndexConverged() {
+static bool HasIndexConfigurationConverged() {
   static IndexSummary prev_index_summary;
-  // If the index stays the same for 10 continouse phase, it's considered as
-  // converged.
+  // If the index configuration stays the same
+  // for "INDEX_CONVERGE_THRESHOLD" continuous phases,
+  // then it's considered as converged.
 
   IndexSummary index_summary;
   index_summary.completed = true;
@@ -1018,9 +1021,9 @@ static bool CheckIndexConverged() {
   oid_t index_count = sdbench_table->GetIndexCount();
   auto table_tile_group_count = sdbench_table->GetTileGroupCount();
   for (oid_t index_itr = 0; index_itr < index_count; index_itr++) {
+
     // Get index
     auto index = sdbench_table->GetIndex(index_itr);
-
     auto indexed_tile_group_offset = index->GetIndexedTileGroupOffset();
 
     // Get percentage completion
@@ -1041,7 +1044,7 @@ static bool CheckIndexConverged() {
 
   if (index_summary.completed == false) {
     prev_index_summary = index_summary;
-    index_unchanged = 0;
+    index_unchanged_phase_count = 0;
     return false;
   }
 
@@ -1058,15 +1061,18 @@ static bool CheckIndexConverged() {
     identical = false;
   }
 
+  // Update index unchanged phase count
   if (identical) {
-    index_unchanged += 1;
+    index_unchanged_phase_count += 1;
   } else {
-    index_unchanged = 0;
+    index_unchanged_phase_count = 0;
   }
 
   prev_index_summary = index_summary;
 
-  if (index_unchanged >= INDEX_CONVERGE_THRESHOLD) {
+  // Check threshold # of phases
+  int convergence_phase_count_threshold = convergence_query_count_threshold/state.phase_length;
+  if (index_unchanged_phase_count >= convergence_phase_count_threshold) {
     return true;
   }
 
@@ -1075,10 +1081,10 @@ static bool CheckIndexConverged() {
 
 /**
  * @brief Truncate the first or last N lines from the file. This function is
- * currently used for removing converge time from totol duration.
+ * currently used for removing converge time from total duration.
  *
  * @param filename The name of the file, the file must exist
- * @param N Number of lines to bre removed.
+ * @param N Number of lines to be removed.
  * @param reverse Truncate from the reverse or not
  */
 UNUSED_ATTRIBUTE static void TruncateLines(const std::string &filename, size_t N,
@@ -1110,7 +1116,6 @@ UNUSED_ATTRIBUTE static void TruncateLines(const std::string &filename, size_t N
 }
 
 void RunSDBenchTest() {
-  const double PHASE_COUNT_LIMIT = 10000;
 
   // Setup index tuner
   auto &index_tuner = brain::IndexTuner::GetInstance();
@@ -1129,15 +1134,19 @@ void RunSDBenchTest() {
   double write_ratio = state.write_ratio;
   double phase_count = state.total_ops / state.phase_length;
 
-  if (state.total_ops < 0) {
-    phase_count = PHASE_COUNT_LIMIT;
+  // Convergence test
+  const double CONVERGENCE_PHASE_COUNT_THRESHOLD = 10000;
+  if (state.convergence == true) {
+    phase_count = CONVERGENCE_PHASE_COUNT_THRESHOLD;
   }
 
-  if (phase_count > PHASE_COUNT_LIMIT) {
-    LOG_INFO("Too many phases, current phase limit is %lf", PHASE_COUNT_LIMIT);
-    exit(-1);
+  if (phase_count > CONVERGENCE_PHASE_COUNT_THRESHOLD) {
+    LOG_INFO("Too many phases, current phase count threshold is %.0lf",
+             CONVERGENCE_PHASE_COUNT_THRESHOLD);
+    exit(EXIT_FAILURE);
   }
 
+  // Reset total duration
   total_duration = 0;
 
   // Reset query counter
@@ -1165,15 +1174,15 @@ void RunSDBenchTest() {
     }
 
     // Check index convergence
-    bool converged = CheckIndexConverged();
+    bool converged = HasIndexConfigurationConverged();
 
-    if (converged && state.total_ops < 0) {
+    if (converged && state.convergence == true) {
       LOG_INFO("Index converged");
       break;
     }
 
     // Reset the timer
-    if (index_unchanged == 0) {
+    if (index_unchanged_phase_count == 0) {
       index_unchanged_timer.Reset();
       index_unchanged_timer.Start();
     }
@@ -1194,7 +1203,7 @@ void RunSDBenchTest() {
 
   LOG_INFO("Total Duration : %.2lf", total_duration);
   // Convergence test
-  if (state.total_ops < 0) {
+  if (state.convergence == true) {
     LOG_INFO("Duration for convergence: %.2lf",
              index_unchanged_timer.GetDuration());
   }
@@ -1202,10 +1211,9 @@ void RunSDBenchTest() {
   out.close();
 
   // Convergence test
-  if (state.total_ops < 0) {
+  if (state.convergence == true) {
     // truncate the last INDEX_CONVERGE_THRESHOLD * phase_length lines
-    TruncateLines(OUTPUT_FILE, INDEX_CONVERGE_THRESHOLD * state.phase_length,
-                  true);
+    TruncateLines(OUTPUT_FILE, convergence_query_count_threshold, true);
   }
 }
 

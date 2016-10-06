@@ -88,6 +88,9 @@ class configuration {
   // Verbose output
   bool verbose;
 
+  // Convergence test?
+  bool convergence;
+
   // INDEX TUNER PARAMETERS
 
   // sample count threshold after which "a" tuning iteration takes place
@@ -95,7 +98,6 @@ class configuration {
 
   // max tile groups indexed per tuning iteration per table
   oid_t max_tile_groups_indexed;
-
 };
 
 void Usage(FILE *out);
