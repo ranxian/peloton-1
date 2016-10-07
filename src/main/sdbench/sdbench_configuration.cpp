@@ -380,6 +380,9 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
     state.sample_count_threshold = 5;
   }
 
+  // Setup max tile groups indexed based on scale factor
+  state.max_tile_groups_indexed = state.scale_factor / 10;
+
   ValidateSampleCountThreshold(state);
   ValidateMaxTileGroupsIndexed(state);
   ValidateConvergence(state);
