@@ -1201,20 +1201,15 @@ void RunSDBenchTest() {
   state.adapt_layout = false;
   query_itr = 0;
 
-  LOG_INFO("Total Duration : %.2lf", total_duration);
+  LOG_INFO("Convergence duration : %.2lf", total_duration);
+
   // Convergence test
   if (state.convergence == true) {
-    LOG_INFO("Duration for convergence: %.2lf",
-             index_unchanged_timer.GetDuration());
+    LOG_TRACE("Duration of unchanged index configuratio: %.2lf",
+              index_unchanged_timer.GetDuration());
   }
 
   out.close();
-
-  // Convergence test
-  if (state.convergence == true) {
-    // truncate the last INDEX_CONVERGE_THRESHOLD * phase_length lines
-    TruncateLines(OUTPUT_FILE, convergence_query_count_threshold, true);
-  }
 }
 
 }  // namespace sdbench
