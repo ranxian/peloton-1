@@ -24,22 +24,23 @@ namespace sdbench {
 void Usage() {
   LOG_INFO("\n"
       "Command line options : sdbench <options>\n"
-      "   -h --help                    :  Print help message\n"
-      "   -f --index_usage_type        :  Types of indexes used\n"
-      "   -c --query_complexity_type   :  Complexity of query\n"
-      "   -k --scale-factor            :  # of tile groups\n"
-      "   -a --attribute_count         :  # of attributes\n"
-      "   -w --write_ratio             :  Fraction of writes\n"
-      "   -g --tuples_per_tg           :  # of tuples per tilegroup\n"
-      "   -t --phase_length            :  Length of a phase\n"
-      "   -q --total_ops               :  Total # of ops, specify -1 to run until converge\n"
-      "   -s --selectivity             :  Selectivity\n"
-      "   -p --projectivity            :  Projectivity\n"
-      "   -l --layout                  :  Layout\n"
-      "   -e --sample_count_threshold  :  Sample count threshold\n"
-      "   -m --max_tile_groups_indexed :  Max tile groups indexed\n"
-      "   -o --convergence             :  Convergence\n"
-      "   -v --verbose                 :  Output verbosity\n"
+      "   -h --help                          :  Print help message\n"
+      "   -f --index_usage_type              :  Types of indexes used\n"
+      "   -c --query_complexity_type         :  Complexity of query\n"
+      "   -k --scale-factor                  :  # of tile groups\n"
+      "   -a --attribute_count               :  # of attributes\n"
+      "   -w --write_ratio                   :  Fraction of writes\n"
+      "   -g --tuples_per_tg                 :  # of tuples per tilegroup\n"
+      "   -t --phase_length                  :  Length of a phase\n"
+      "   -q --total_ops                     :  Total # of ops, specify -1 to run until converge\n"
+      "   -s --selectivity                   :  Selectivity\n"
+      "   -p --projectivity                  :  Projectivity\n"
+      "   -l --layout                        :  Layout\n"
+      "   -e --sample_count_threshold        :  Sample count threshold\n"
+      "   -m --max_tile_groups_indexed       :  Max tile groups indexed\n"
+      "   -o --convergence                   :  Convergence\n"
+      "   -b --convergence_query_threshold   :  # of queries for convergence\n"
+      "   -v --verbose                       :  Output verbosity\n"
   );
   exit(EXIT_FAILURE);
 }
@@ -59,6 +60,7 @@ static struct option opts[] = {
     {"sample_count_threshold", optional_argument, NULL, 'e'},
     {"max_tile_groups_indexed", optional_argument, NULL, 'm'},
     {"convergence", optional_argument, NULL, 'o'},
+    {"convergence_query_threshold", optional_argument, NULL, 'b'},
     {"verbose", optional_argument, NULL, 'v'},
     {NULL, 0, NULL, 0}
 };
@@ -241,6 +243,15 @@ static void ValidateConvergence(const configuration &state) {
   }
 }
 
+static void ValidateQueryConvergenceThreshold(const configuration &state) {
+  if (state.convergence_query_threshold <= 0) {
+    LOG_ERROR("Invalid convergence_query_threshold :: %u", state.convergence_query_threshold);
+    exit(EXIT_FAILURE);
+  }
+
+  LOG_INFO("%s : %u", "convergence_query_threshold", state.convergence_query_threshold);
+}
+
 void ParseArguments(int argc, char *argv[], configuration &state) {
 
   // Default Values
@@ -273,13 +284,16 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   state.sample_count_threshold = 10;
   state.max_tile_groups_indexed = 10;
 
-  state.verbose = false;
+  // Convergence parameters
   state.convergence = false;
+  state.convergence_query_threshold = 200;
+
+  state.verbose = false;
 
   // Parse args
   while (1) {
     int idx = 0;
-    int c = getopt_long(argc, argv, "hf:c:k:a:w:g:y:q:t:s:p:l:v:e:m:o:", opts, &idx);
+    int c = getopt_long(argc, argv, "hf:c:k:a:w:g:y:q:t:s:p:l:v:e:m:o:b:", opts, &idx);
 
     if (c == -1) break;
 
@@ -329,6 +343,9 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
       case 'o':
         state.convergence = atoi(optarg);
         break;
+      case 'b':
+        state.convergence_query_threshold = atoi(optarg);
+        break;
 
       case 'h':
         Usage();
@@ -366,6 +383,7 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   ValidateSampleCountThreshold(state);
   ValidateMaxTileGroupsIndexed(state);
   ValidateConvergence(state);
+  ValidateQueryConvergenceThreshold(state);
 
 }
 

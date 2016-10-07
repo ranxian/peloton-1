@@ -98,6 +98,12 @@ class configuration {
 
   // max tile groups indexed per tuning iteration per table
   oid_t max_tile_groups_indexed;
+
+  // CONVERGENCE PARAMETER
+
+  // number of queries for which index configuration must remain stable
+  oid_t convergence_query_threshold;
+
 };
 
 void Usage(FILE *out);

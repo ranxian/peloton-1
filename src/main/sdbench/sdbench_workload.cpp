@@ -1000,7 +1000,6 @@ struct IndexSummary {
 };
 
 static int index_unchanged_phase_count = 0;
-const static int convergence_query_count_threshold = 200;
 
 /**
  * @brief Check if index scheme has converged.
@@ -1071,8 +1070,8 @@ static bool HasIndexConfigurationConverged() {
   prev_index_summary = index_summary;
 
   // Check threshold # of phases
-  int convergence_phase_count_threshold = convergence_query_count_threshold/state.phase_length;
-  if (index_unchanged_phase_count >= convergence_phase_count_threshold) {
+  int convergence_phase_threshold = state.convergence_query_threshold/state.phase_length;
+  if (index_unchanged_phase_count >= convergence_phase_threshold) {
     return true;
   }
 
