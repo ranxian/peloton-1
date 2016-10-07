@@ -40,6 +40,7 @@ void Usage() {
       "   -m --max_tile_groups_indexed       :  Max tile groups indexed\n"
       "   -o --convergence                   :  Convergence\n"
       "   -b --convergence_query_threshold   :  # of queries for convergence\n"
+      "   -d --variability_threshold         :  Variability threshold\n"
       "   -v --verbose                       :  Output verbosity\n"
   );
   exit(EXIT_FAILURE);
@@ -61,6 +62,7 @@ static struct option opts[] = {
     {"max_tile_groups_indexed", optional_argument, NULL, 'm'},
     {"convergence", optional_argument, NULL, 'o'},
     {"convergence_query_threshold", optional_argument, NULL, 'b'},
+    {"variability_threshold", optional_argument, NULL, 'd'},
     {"verbose", optional_argument, NULL, 'v'},
     {NULL, 0, NULL, 0}
 };
@@ -252,6 +254,16 @@ static void ValidateQueryConvergenceThreshold(const configuration &state) {
   LOG_INFO("%s : %u", "convergence_query_threshold", state.convergence_query_threshold);
 }
 
+static void ValidateVariabilityThreshold(const configuration &state) {
+  if (state.variability_threshold <= 0 || state.variability_threshold > 25) {
+    LOG_ERROR("Invalid variability_threshold :: %u", state.variability_threshold);
+    exit(EXIT_FAILURE);
+  }
+
+  LOG_INFO("%s : %u", "variability_threshold", state.variability_threshold);
+}
+
+
 void ParseArguments(int argc, char *argv[], configuration &state) {
 
   // Default Values
@@ -288,12 +300,15 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   state.convergence = false;
   state.convergence_query_threshold = 200;
 
+  // Variability parameters
+  state.variability_threshold = 25;
+
   state.verbose = false;
 
   // Parse args
   while (1) {
     int idx = 0;
-    int c = getopt_long(argc, argv, "hf:c:k:a:w:g:y:q:t:s:p:l:v:e:m:o:b:", opts, &idx);
+    int c = getopt_long(argc, argv, "hf:c:k:a:w:g:y:q:t:s:p:l:v:e:m:o:b:d:", opts, &idx);
 
     if (c == -1) break;
 
@@ -346,6 +361,9 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
       case 'b':
         state.convergence_query_threshold = atoi(optarg);
         break;
+      case 'd':
+        state.variability_threshold = atoi(optarg);
+        break;
 
       case 'h':
         Usage();
@@ -387,6 +405,7 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   ValidateMaxTileGroupsIndexed(state);
   ValidateConvergence(state);
   ValidateQueryConvergenceThreshold(state);
+  ValidateVariabilityThreshold(state);
 
 }
 

@@ -104,6 +104,9 @@ class configuration {
   // number of queries for which index configuration must remain stable
   oid_t convergence_query_threshold;
 
+  // VARIABILITY PARAMETER
+  oid_t variability_threshold;
+
 };
 
 void Usage(FILE *out);

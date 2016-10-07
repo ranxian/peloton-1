@@ -419,7 +419,7 @@ static void RunSimpleQuery() {
   std::vector<oid_t> tuple_key_attrs;
   std::vector<oid_t> index_key_attrs;
 
-  auto rand_sample = rand() % 25;
+  auto rand_sample = rand() % state.variability_threshold;
   if (rand_sample <= 5) {
     tuple_key_attrs = {1};
     index_key_attrs = {0};
@@ -474,7 +474,7 @@ static void RunModerateQuery() {
   std::vector<oid_t> tuple_key_attrs;
   std::vector<oid_t> index_key_attrs;
 
-  auto rand_sample = rand() % 25;
+  auto rand_sample = rand() % state.variability_threshold;
   if (rand_sample <= 5) {
     tuple_key_attrs = {2, 5};
     index_key_attrs = {0, 1};
@@ -540,7 +540,7 @@ static void RunComplexQuery() {
 
   // Assume there are 20 columns,
   // 10 for the left table, 10 for the right table
-  auto rand_sample = rand() % 25;
+  auto rand_sample = rand() % state.variability_threshold;
   if (rand_sample <= 5) {
     left_table_tuple_key_attrs = {3, 4};
     left_table_index_key_attrs = {0, 1};
