@@ -521,6 +521,22 @@ void IndexTuner::IndexTuneHelper(storage::DataTable* table) {
   table->ClearIndexSamples();
 }
 
+oid_t IndexTuner::GetIndexCount() const{
+
+  oid_t index_count = 0;
+
+  // Go over all tables
+  for(auto table : tables) {
+
+    oid_t table_index_count = table->GetIndexCount();
+
+    // Update index count
+    index_count += table_index_count;
+  }
+
+  return index_count;
+}
+
 void IndexTuner::Tune(){
 
 

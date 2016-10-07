@@ -97,6 +97,9 @@ oid_t sdbench_tuple_counter = -1000000;
 
 std::vector<oid_t> column_counts = {50, 500};
 
+// Index tuner
+brain::IndexTuner& index_tuner = brain::IndexTuner::GetInstance();
+
 static int GetLowerBound() {
   int tuple_count = state.scale_factor * state.tuples_per_tilegroup;
   int predicate_offset = 0.1 * tuple_count;
@@ -273,14 +276,16 @@ UNUSED_ATTRIBUTE static void WriteOutput(double duration) {
   // Convert to ms
   duration *= 1000;
 
+  auto index_count = index_tuner.GetIndexCount();
+
   // Write out output in verbose mode
   if (state.verbose == true) {
     LOG_INFO("----------------------------------------------------------");
-    LOG_INFO("%d %d %.3lf %.3lf %u %.1lf %d %d %d :: %.1lf ms",
+    LOG_INFO("%d %d %.3lf %.3lf %u %.1lf %d %d %d %u :: %.1lf ms",
              state.index_usage_type, state.query_complexity_type,
              state.selectivity, state.projectivity, query_itr,
              state.write_ratio, state.scale_factor, state.attribute_count,
-             state.tuples_per_tilegroup, duration);
+             state.tuples_per_tilegroup, index_count, duration);
   }
 
   out << state.index_usage_type << " ";
@@ -292,6 +297,7 @@ UNUSED_ATTRIBUTE static void WriteOutput(double duration) {
   out << state.scale_factor << " ";
   out << state.attribute_count << " ";
   out << state.tuples_per_tilegroup << " ";
+  out << index_count << " ";
   out << std::fixed << std::setprecision(2) << duration << "\n";
 
   out.flush();
@@ -1117,7 +1123,6 @@ UNUSED_ATTRIBUTE static void TruncateLines(const std::string &filename, size_t N
 void RunSDBenchTest() {
 
   // Setup index tuner
-  auto &index_tuner = brain::IndexTuner::GetInstance();
   index_tuner.SetSampleCountThreshold(state.sample_count_threshold);
   index_tuner.SetMaxTileGroupsIndexed(state.max_tile_groups_indexed);
 

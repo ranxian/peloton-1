@@ -76,6 +76,9 @@ class IndexTuner {
     max_tile_groups_indexed = max_tile_groups_indexed_;
   }
 
+  // Get # of indexes in managed tables
+  oid_t GetIndexCount() const;
+
  protected:
 
   // Index tuning helper
