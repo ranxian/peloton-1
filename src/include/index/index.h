@@ -12,18 +12,18 @@
 
 #pragma once
 
-#include <vector>
-#include <string>
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <set>
-#include <atomic>
+#include <string>
+#include <vector>
 
+#include "common/logger.h"
 #include "common/printable.h"
 #include "common/types.h"
-#include "common/logger.h"
-#include "common/varlen_pool.h"
 #include "common/value.h"
+#include "common/varlen_pool.h"
 
 namespace peloton {
 
@@ -211,9 +211,8 @@ class Index : public Printable {
   // If not any of those k-v pair satisfy the predicate, insert the k-v pair
   // into the index and return true.
   // This function should be called for all primary/unique index insert
-  virtual bool CondInsertEntry(
-      const storage::Tuple *key, ItemPointer *location,
-      std::function<bool(const void *)> predicate) = 0;
+  virtual bool CondInsertEntry(const storage::Tuple *key, ItemPointer *location,
+                               std::function<bool(const void *)> predicate) = 0;
 
   ///////////////////////////////////////////////////////////////////
   // Index Scan
@@ -321,7 +320,7 @@ class Index : public Printable {
   virtual size_t GetMemoryFootprint() = 0;
 
   // Get the indexed tile group offset
-  virtual size_t GetIndexedTileGroupOff() {
+  virtual size_t GetIndexedTileGroupOffset() {
     return indexed_tile_group_offset.load();
   }
 
@@ -336,7 +335,7 @@ class Index : public Printable {
 
   // Set the lower bound tuple for index iteration
   bool ConstructLowerBoundTuple(storage::Tuple *index_key,
-                                const std::vector<common::Value*> &values,
+                                const std::vector<common::Value *> &values,
                                 const std::vector<oid_t> &key_column_ids,
                                 const std::vector<ExpressionType> &expr_types);
 

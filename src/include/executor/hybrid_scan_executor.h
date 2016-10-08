@@ -10,13 +10,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #pragma once
 
-#include "storage/data_table.h"
-#include "index/index.h"
 #include "executor/abstract_scan_executor.h"
+#include "index/index.h"
 #include "planner/hybrid_scan_plan.h"
+#include "storage/data_table.h"
 
 #include <set>
 
@@ -41,7 +40,7 @@ class HybridScanExecutor : public AbstractScanExecutor {
 
   storage::DataTable *table_ = nullptr;
 
-  oid_t indexed_tile_offset_ = INVALID_OID;
+  oid_t indexed_tile_group_offset_ = INVALID_OID;
 
   HybridScanType type_ = HYBRID_SCAN_TYPE_INVALID;
 
@@ -84,7 +83,7 @@ class HybridScanExecutor : public AbstractScanExecutor {
   //===--------------------------------------------------------------------===//
   std::vector<oid_t> column_ids_;
 
-  std::vector<common::Value *> values_;
+  std::vector<peloton::common::Value *> values_;
 
   std::vector<oid_t> full_column_ids_;
 
