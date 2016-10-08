@@ -10,9 +10,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-
-#include <iomanip>
 #include <algorithm>
+#include <iomanip>
 
 #include "benchmark/sdbench/sdbench_configuration.h"
 #include "common/logger.h"
@@ -22,7 +21,8 @@ namespace benchmark {
 namespace sdbench {
 
 void Usage() {
-  LOG_INFO("\n"
+  LOG_INFO(
+      "\n"
       "Command line options : sdbench <options>\n"
       "   -h --help                          :  Print help message\n"
       "   -f --index_usage_type              :  Types of indexes used\n"
@@ -32,7 +32,8 @@ void Usage() {
       "   -w --write_ratio                   :  Fraction of writes\n"
       "   -g --tuples_per_tg                 :  # of tuples per tilegroup\n"
       "   -t --phase_length                  :  Length of a phase\n"
-      "   -q --total_ops                     :  Total # of ops, specify -1 to run until converge\n"
+      "   -q --total_ops                     :  Total # of ops, specify -1 to "
+      "run until converge\n"
       "   -s --selectivity                   :  Selectivity\n"
       "   -p --projectivity                  :  Projectivity\n"
       "   -l --layout                        :  Layout\n"
@@ -41,8 +42,7 @@ void Usage() {
       "   -o --convergence                   :  Convergence\n"
       "   -b --convergence_query_threshold   :  # of queries for convergence\n"
       "   -d --variability_threshold         :  Variability threshold\n"
-      "   -v --verbose                       :  Output verbosity\n"
-  );
+      "   -v --verbose                       :  Output verbosity\n");
   exit(EXIT_FAILURE);
 }
 
@@ -64,8 +64,7 @@ static struct option opts[] = {
     {"convergence_query_threshold", optional_argument, NULL, 'b'},
     {"variability_threshold", optional_argument, NULL, 'd'},
     {"verbose", optional_argument, NULL, 'v'},
-    {NULL, 0, NULL, 0}
-};
+    {NULL, 0, NULL, 0}};
 
 void GenerateSequence(oid_t column_count) {
   // Reset sequence
@@ -78,54 +77,53 @@ void GenerateSequence(oid_t column_count) {
   std::random_shuffle(sdbench_column_ids.begin(), sdbench_column_ids.end());
 }
 
-
 static void ValidateIndexUsageType(const configuration &state) {
   if (state.index_usage_type < 1 || state.index_usage_type > 5) {
-      LOG_ERROR("Invalid index_usage_type :: %d", state.index_usage_type);
-      exit(EXIT_FAILURE);
-  }
-  else {
-      switch (state.index_usage_type) {
-        case INDEX_USAGE_TYPE_CONSERVATIVE:
-          LOG_INFO("%s : CONSERVATIVE", "index_usage_type ");
-          break;
-        case INDEX_USAGE_TYPE_BALANCED:
-          LOG_INFO("%s : BALANCED", "index_usage_type ");
-          break;
-        case INDEX_USAGE_TYPE_AGGRESSIVE:
-          LOG_INFO("%s : AGGRESSIVE", "index_usage_type ");
-          break;
-        case INDEX_USAGE_TYPE_FULL:
-          LOG_INFO("%s : FULL", "index_usage_type ");
-          break;
-        case INDEX_USAGE_TYPE_NEVER:
-          LOG_INFO("%s : NEVER", "index_usage_type ");
-          break;
-        default:
-          break;
-      }
+    LOG_ERROR("Invalid index_usage_type :: %d", state.index_usage_type);
+    exit(EXIT_FAILURE);
+  } else {
+    switch (state.index_usage_type) {
+      case INDEX_USAGE_TYPE_CONSERVATIVE:
+        LOG_INFO("%s : CONSERVATIVE", "index_usage_type ");
+        break;
+      case INDEX_USAGE_TYPE_BALANCED:
+        LOG_INFO("%s : BALANCED", "index_usage_type ");
+        break;
+      case INDEX_USAGE_TYPE_AGGRESSIVE:
+        LOG_INFO("%s : AGGRESSIVE", "index_usage_type ");
+        break;
+      case INDEX_USAGE_TYPE_FULL:
+        LOG_INFO("%s : FULL", "index_usage_type ");
+        break;
+      case INDEX_USAGE_TYPE_NEVER:
+        LOG_INFO("%s : NEVER", "index_usage_type ");
+        break;
+      default:
+        break;
     }
+  }
 }
 
 static void ValidateQueryComplexityType(const configuration &state) {
   if (state.query_complexity_type < 1 || state.query_complexity_type > 3) {
-      LOG_ERROR("Invalid query_complexity_type :: %d", state.query_complexity_type);
-      exit(EXIT_FAILURE);
-    } else {
-      switch (state.query_complexity_type) {
-        case QUERY_COMPLEXITY_TYPE_SIMPLE:
-          LOG_INFO("%s : SIMPLE", "query_complexity_type ");
-          break;
-        case QUERY_COMPLEXITY_TYPE_MODERATE:
-          LOG_INFO("%s : MODERATE", "query_complexity_type ");
-          break;
-        case QUERY_COMPLEXITY_TYPE_COMPLEX:
-          LOG_INFO("%s : COMPLEX", "query_complexity_type ");
-          break;
-        default:
-          break;
-      }
+    LOG_ERROR("Invalid query_complexity_type :: %d",
+              state.query_complexity_type);
+    exit(EXIT_FAILURE);
+  } else {
+    switch (state.query_complexity_type) {
+      case QUERY_COMPLEXITY_TYPE_SIMPLE:
+        LOG_INFO("%s : SIMPLE", "query_complexity_type ");
+        break;
+      case QUERY_COMPLEXITY_TYPE_MODERATE:
+        LOG_INFO("%s : MODERATE", "query_complexity_type ");
+        break;
+      case QUERY_COMPLEXITY_TYPE_COMPLEX:
+        LOG_INFO("%s : COMPLEX", "query_complexity_type ");
+        break;
+      default:
+        break;
     }
+  }
 }
 
 static void ValidateScaleFactor(const configuration &state) {
@@ -223,7 +221,8 @@ static void ValidateTuplesPerTileGroup(const configuration &state) {
 
 static void ValidateSampleCountThreshold(const configuration &state) {
   if (state.sample_count_threshold <= 0) {
-    LOG_ERROR("Invalid sample_count_threshold :: %u", state.sample_count_threshold);
+    LOG_ERROR("Invalid sample_count_threshold :: %u",
+              state.sample_count_threshold);
     exit(EXIT_FAILURE);
   }
 
@@ -232,7 +231,8 @@ static void ValidateSampleCountThreshold(const configuration &state) {
 
 static void ValidateMaxTileGroupsIndexed(const configuration &state) {
   if (state.max_tile_groups_indexed <= 0) {
-    LOG_ERROR("Invalid max_tile_groups_indexed :: %u", state.max_tile_groups_indexed);
+    LOG_ERROR("Invalid max_tile_groups_indexed :: %u",
+              state.max_tile_groups_indexed);
     exit(EXIT_FAILURE);
   }
 
@@ -247,25 +247,26 @@ static void ValidateConvergence(const configuration &state) {
 
 static void ValidateQueryConvergenceThreshold(const configuration &state) {
   if (state.convergence_query_threshold <= 0) {
-    LOG_ERROR("Invalid convergence_query_threshold :: %u", state.convergence_query_threshold);
+    LOG_ERROR("Invalid convergence_query_threshold :: %u",
+              state.convergence_query_threshold);
     exit(EXIT_FAILURE);
   }
 
-  LOG_INFO("%s : %u", "convergence_query_threshold", state.convergence_query_threshold);
+  LOG_INFO("%s : %u", "convergence_query_threshold",
+           state.convergence_query_threshold);
 }
 
 static void ValidateVariabilityThreshold(const configuration &state) {
   if (state.variability_threshold <= 0 || state.variability_threshold > 25) {
-    LOG_ERROR("Invalid variability_threshold :: %u", state.variability_threshold);
+    LOG_ERROR("Invalid variability_threshold :: %u",
+              state.variability_threshold);
     exit(EXIT_FAILURE);
   }
 
   LOG_INFO("%s : %u", "variability_threshold", state.variability_threshold);
 }
 
-
 void ParseArguments(int argc, char *argv[], configuration &state) {
-
   // Default Values
   state.index_usage_type = INDEX_USAGE_TYPE_AGGRESSIVE;
   state.query_complexity_type = QUERY_COMPLEXITY_TYPE_SIMPLE;
@@ -308,16 +309,17 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   // Parse args
   while (1) {
     int idx = 0;
-    int c = getopt_long(argc, argv, "hf:c:k:a:w:g:y:q:t:s:p:l:v:e:m:o:b:d:", opts, &idx);
+    int c = getopt_long(argc, argv, "hf:c:k:a:w:g:y:q:t:s:p:l:v:e:m:o:b:d:",
+                        opts, &idx);
 
     if (c == -1) break;
 
     switch (c) {
       case 'f':
-        state.index_usage_type = (IndexUsageType) atoi(optarg);
+        state.index_usage_type = (IndexUsageType)atoi(optarg);
         break;
       case 'c':
-        state.query_complexity_type = (QueryComplexityType) atoi(optarg);
+        state.query_complexity_type = (QueryComplexityType)atoi(optarg);
         break;
       case 'k':
         state.scale_factor = atoi(optarg);
@@ -387,14 +389,14 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   ValidateProjectivity(state);
   ValidateLayout(state);
 
-  // Setup learning rate based on index usage type
-  if(state.index_usage_type == INDEX_USAGE_TYPE_CONSERVATIVE) {
+  // Setup learning rate based on index usage type. With a smaller
+  // sample_count_threashold, the index tuner will be more aggressive to adapt a
+  // new index.
+  if (state.index_usage_type == INDEX_USAGE_TYPE_CONSERVATIVE) {
     state.sample_count_threshold = 50;
-  }
-  else if(state.index_usage_type == INDEX_USAGE_TYPE_BALANCED) {
+  } else if (state.index_usage_type == INDEX_USAGE_TYPE_BALANCED) {
     state.sample_count_threshold = 10;
-  }
-  else if(state.index_usage_type == INDEX_USAGE_TYPE_AGGRESSIVE) {
+  } else if (state.index_usage_type == INDEX_USAGE_TYPE_AGGRESSIVE) {
     state.sample_count_threshold = 5;
   }
 
@@ -406,7 +408,6 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   ValidateConvergence(state);
   ValidateQueryConvergenceThreshold(state);
   ValidateVariabilityThreshold(state);
-
 }
 
 }  // namespace sdbench

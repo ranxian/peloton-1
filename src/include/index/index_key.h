@@ -10,17 +10,16 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #pragma once
 
 #include <iostream>
 #include <sstream>
 
-#include "common/value_peeker.h"
 #include "common/logger.h"
 #include "common/macros.h"
-#include "storage/tuple.h"
+#include "common/value_peeker.h"
 #include "index/index.h"
+#include "storage/tuple.h"
 
 #include <boost/functional/hash.hpp>
 
@@ -135,8 +134,8 @@ class IntsKey {
        * byte location available
        * in the key and OR it in.
        */
-      data[key_offset] |=
-          (0xFF & (key_value >> (ii * 8))) << (intra_key_offset * 8);  //
+      data[key_offset] |= (0xFF & (key_value >> (ii * 8)))
+                          << (intra_key_offset * 8);  //
       intra_key_offset--;  // Move the offset inside the uint64 key back one.
       /*
        * If there are no more bytes available in the uint64_t indexed by
@@ -160,8 +159,8 @@ class IntsKey {
                                   int &intra_key_offset) const {
     uint64_t retval = 0;
     for (int ii = static_cast<int>(sizeof(KeyValueType)) - 1; ii >= 0; ii--) {
-      retval |=
-          (0xFF & (data[key_offset] >> (intra_key_offset * 8))) << (ii * 8);
+      retval |= (0xFF & (data[key_offset] >> (intra_key_offset * 8)))
+                << (ii * 8);
       intra_key_offset--;
       if (intra_key_offset < 0) {
         intra_key_offset = sizeof(uint64_t) - 1;
@@ -171,7 +170,8 @@ class IntsKey {
     return retval;
   }
 
-  const storage::Tuple GetTupleForComparison(const catalog::Schema *key_schema) const {
+  const storage::Tuple GetTupleForComparison(
+      const catalog::Schema *key_schema) const {
     return storage::Tuple(key_schema, data);
   }
 
@@ -186,21 +186,24 @@ class IntsKey {
           const uint64_t key_value =
               ExtractKeyValue<uint64_t>(key_offset, intra_key_offset);
           buffer << ConvertUnsignedValueToSignedValue<int64_t, INT64_MAX>(
-                        key_value) << ",";
+                        key_value)
+                 << ",";
           break;
         }
         case VALUE_TYPE_INTEGER: {
           const uint64_t key_value =
               ExtractKeyValue<uint32_t>(key_offset, intra_key_offset);
           buffer << ConvertUnsignedValueToSignedValue<int32_t, INT32_MAX>(
-                        key_value) << ",";
+                        key_value)
+                 << ",";
           break;
         }
         case VALUE_TYPE_SMALLINT: {
           const uint64_t key_value =
               ExtractKeyValue<uint16_t>(key_offset, intra_key_offset);
           buffer << ConvertUnsignedValueToSignedValue<int16_t, INT16_MAX>(
-                        key_value) << ",";
+                        key_value)
+                 << ",";
           break;
         }
         case VALUE_TYPE_TINYINT: {
@@ -208,12 +211,14 @@ class IntsKey {
               ExtractKeyValue<uint8_t>(key_offset, intra_key_offset);
           buffer << static_cast<int64_t>(
                         ConvertUnsignedValueToSignedValue<int8_t, INT8_MAX>(
-                            key_value)) << ",";
+                            key_value))
+                 << ",";
           break;
         }
         default:
-          throw IndexException("We currently only support a specific set of "
-                               "column index sizes...");
+          throw IndexException(
+              "We currently only support a specific set of "
+              "column index sizes...");
           break;
       }
     }
@@ -262,8 +267,9 @@ class IntsKey {
           break;
         }
         default:
-          throw IndexException("We currently only support a specific set of "
-                               "column index sizes...");
+          throw IndexException(
+              "We currently only support a specific set of "
+              "column index sizes...");
           break;
       }
     }
@@ -314,8 +320,9 @@ class IntsKey {
           break;
         }
         default:
-          throw IndexException("We currently only support a specific set of "
-                               "column index sizes...");
+          throw IndexException(
+              "We currently only support a specific set of "
+              "column index sizes...");
           break;
       }
     }
@@ -327,12 +334,10 @@ class IntsKey {
  private:
 };
 
-
 /** comparator for Int specialized indexes. */
 template <std::size_t KeySize>
 class IntsComparator {
  public:
-
   inline bool operator()(const IntsKey<KeySize> &lhs,
                          const IntsKey<KeySize> &rhs) const {
     // lexicographical compare could be faster for fixed N
@@ -359,9 +364,8 @@ class IntsComparator {
 template <std::size_t KeySize>
 class IntsComparatorRaw {
  public:
-
   inline int operator()(const IntsKey<KeySize> &lhs,
-                         const IntsKey<KeySize> &rhs) const {
+                        const IntsKey<KeySize> &rhs) const {
     // lexicographical compare could be faster for fixed N
     /*
      * Hopefully the compiler can unroll this loop
@@ -387,9 +391,9 @@ class IntsComparatorRaw {
 /**
  *
  */
-template <std::size_t KeySize> class IntsEqualityChecker {
+template <std::size_t KeySize>
+class IntsEqualityChecker {
  public:
-
   inline bool operator()(const IntsKey<KeySize> &lhs,
                          const IntsKey<KeySize> &rhs) const {
     for (unsigned int ii = 0; ii < KeySize; ii++) {
@@ -403,8 +407,8 @@ template <std::size_t KeySize> class IntsEqualityChecker {
     return true;
   }
 
-  IntsEqualityChecker(const IntsEqualityChecker &) {};
-  IntsEqualityChecker() {};
+  IntsEqualityChecker(const IntsEqualityChecker &){};
+  IntsEqualityChecker(){};
 };
 
 /**
@@ -424,9 +428,9 @@ struct IntsHasher : std::unary_function<IntsKey<KeySize>, std::size_t> {
   }
 
   const catalog::Schema *schema;
-  
+
   IntsHasher(const IntsHasher &) {}
-  IntsHasher() {};
+  IntsHasher(){};
 };
 
 /**
@@ -471,7 +475,6 @@ class GenericKey {
 template <std::size_t KeySize>
 class GenericComparator {
  public:
-
   inline bool operator()(const GenericKey<KeySize> &lhs,
                          const GenericKey<KeySize> &rhs) const {
     auto schema = lhs.schema;
@@ -502,9 +505,8 @@ class GenericComparator {
 template <std::size_t KeySize>
 class GenericComparatorRaw {
  public:
-
   inline int operator()(const GenericKey<KeySize> &lhs,
-                         const GenericKey<KeySize> &rhs) const {
+                        const GenericKey<KeySize> &rhs) const {
     auto schema = lhs.schema;
 
     for (oid_t column_itr = 0; column_itr < schema->GetColumnCount();
@@ -530,9 +532,9 @@ class GenericComparatorRaw {
 /**
  * Equality-checking function object
  */
-template <std::size_t KeySize> class GenericEqualityChecker {
+template <std::size_t KeySize>
+class GenericEqualityChecker {
  public:
-
   inline bool operator()(const GenericKey<KeySize> &lhs,
                          const GenericKey<KeySize> &rhs) const {
     auto schema = lhs.schema;
@@ -553,7 +555,6 @@ template <std::size_t KeySize> class GenericEqualityChecker {
  */
 template <std::size_t KeySize>
 struct GenericHasher : std::unary_function<GenericKey<KeySize>, std::size_t> {
-
   /** Generate a 64-bit number for the key value */
   inline size_t operator()(GenericKey<KeySize> const &p) const {
     auto schema = p.schema;
@@ -562,10 +563,9 @@ struct GenericHasher : std::unary_function<GenericKey<KeySize>, std::size_t> {
     pTuple.MoveToTuple(reinterpret_cast<const void *>(&p));
     return pTuple.HashCode();
   }
-  
-  GenericHasher(const GenericHasher &) {}
-  GenericHasher() {};
 
+  GenericHasher(const GenericHasher &) {}
+  GenericHasher(){};
 };
 
 /*
@@ -608,8 +608,7 @@ class TupleKey {
 
   // Set a key from a table-schema tuple.
   inline void SetFromTuple(const storage::Tuple *tuple, const int *indices,
-                           UNUSED_ATTRIBUTE const
-                           catalog::Schema *key_schema) {
+                           UNUSED_ATTRIBUTE const catalog::Schema *key_schema) {
     PL_ASSERT(tuple);
     PL_ASSERT(indices);
     column_indices = indices;
@@ -646,23 +645,21 @@ class TupleKey {
  * class TupleKeyHasher - Hash function for tuple keys
  */
 struct TupleKeyHasher {
-
   /** Generate a 64-bit number for the key value */
   inline size_t operator()(const TupleKey &p) const {
     storage::Tuple pTuple = p.GetTupleForComparison(p.key_tuple_schema);
     return pTuple.HashCode();
   }
-  
+
   /*
    * Copy Constructor - To make compiler happy
    */
   TupleKeyHasher(const TupleKeyHasher &) {}
-  TupleKeyHasher() {};
+  TupleKeyHasher(){};
 };
 
 class TupleKeyComparator {
  public:
-
   // return true if lhs < rhs
   inline bool operator()(const TupleKey &lhs, const TupleKey &rhs) const {
     storage::Tuple lhTuple = lhs.GetTupleForComparison(lhs.key_tuple_schema);
@@ -689,12 +686,11 @@ class TupleKeyComparator {
    * Copy constructor
    */
   TupleKeyComparator(const TupleKeyComparator &) {}
-  TupleKeyComparator() {};
+  TupleKeyComparator(){};
 };
 
 class TupleKeyComparatorRaw {
  public:
-
   // return -1 if a < b ;  0 if a == b ;  1 if a > b
   inline int operator()(const TupleKey &lhs, const TupleKey &rhs) const {
     storage::Tuple lhTuple = lhs.GetTupleForComparison(lhs.key_tuple_schema);
@@ -721,12 +717,11 @@ class TupleKeyComparatorRaw {
    * Copy constructor
    */
   TupleKeyComparatorRaw(const TupleKeyComparatorRaw &) {}
-  TupleKeyComparatorRaw() {};
+  TupleKeyComparatorRaw(){};
 };
 
 class TupleKeyEqualityChecker {
  public:
-
   // return true if lhs == rhs
   inline bool operator()(const TupleKey &lhs, const TupleKey &rhs) const {
     storage::Tuple lhTuple = lhs.GetTupleForComparison(lhs.key_tuple_schema);
