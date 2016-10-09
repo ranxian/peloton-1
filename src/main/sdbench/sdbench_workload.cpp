@@ -1045,6 +1045,8 @@ static void UpdateHelper(const std::vector<oid_t> &tuple_key_attrs,
   std::vector<executor::AbstractExecutor *> executors;
   executors.push_back(&update_executor);
 
+  update_executor.AddChild(&hybrid_scan_executor);
+
   /////////////////////////////////////////////////////////
   // COLLECT STATS
   /////////////////////////////////////////////////////////
@@ -1115,7 +1117,9 @@ static void RunSimpleUpdate() {
   for (auto tuple_key_attr : tuple_key_attrs) {
     os << tuple_key_attr << " ";
   }
-  LOG_TRACE("%s", os.str().c_str());
+  if (state.verbose) {
+    LOG_INFO("%s", os.str().c_str());
+  }
 
   UpdateHelper(tuple_key_attrs, index_key_attrs, update_attrs);
 }

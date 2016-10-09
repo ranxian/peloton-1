@@ -493,6 +493,7 @@ oid_t IndexTuner::GetIndexCount() const {
 }
 
 void IndexTuner::Tune() {
+  LOG_INFO("Begin tuning");
   // Continue till signal is not false
   while (index_tuning_stop == false) {
     // Go over all tables
