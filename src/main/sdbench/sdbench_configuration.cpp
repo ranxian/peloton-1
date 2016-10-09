@@ -33,8 +33,7 @@ void Usage() {
       "   -w --write_ratio                   :  Fraction of writes\n"
       "   -g --tuples_per_tg                 :  # of tuples per tilegroup\n"
       "   -t --phase_length                  :  Length of a phase\n"
-      "   -q --total_ops                     :  Total # of ops, specify -1 to "
-      "run until converge\n"
+      "   -q --total_ops                     :  # of operations\n"
       "   -s --selectivity                   :  Selectivity\n"
       "   -p --projectivity                  :  Projectivity\n"
       "   -l --layout                        :  Layout\n"
@@ -210,7 +209,22 @@ static void ValidateWriteRatio(const configuration &state) {
     exit(EXIT_FAILURE);
   }
 
-  LOG_INFO("%s : %.1lf", "write_ratio", state.write_ratio);
+  if (state.write_ratio == 0) {
+    LOG_INFO("%s : READ_ONLY", "write_ratio");
+  }
+  else if (state.write_ratio == 0.1) {
+    LOG_INFO("%s : READ_HEAVY", "write_ratio");
+  }
+  else if (state.write_ratio == 0.5) {
+    LOG_INFO("%s : BALANCED", "write_ratio");
+  }
+  else if (state.write_ratio == 0.9) {
+    LOG_INFO("%s : WRITE_HEAVY", "write_ratio");
+  }
+  else {
+    LOG_INFO("%s : %.1lf", "write_ratio", state.write_ratio);
+  }
+
 }
 
 static void ValidateTotalOps(const configuration &state) {
@@ -291,12 +305,12 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   // Default Values
   state.index_usage_type = INDEX_USAGE_TYPE_AGGRESSIVE;
   state.query_complexity_type = QUERY_COMPLEXITY_TYPE_SIMPLE;
+  state.write_complexity_type = WRITE_COMPLEXITY_TYPE_SIMPLE;
 
   // Scale and attribute count
   state.scale_factor = 100.0;
   state.attribute_count = 20;
 
-  state.write_complexity_type = WRITE_COMPLEXITY_TYPE_SIMPLE;
   state.write_ratio = 0.0;
   state.tuples_per_tilegroup = DEFAULT_TUPLES_PER_TILEGROUP;
 
@@ -404,11 +418,11 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   }
 
   ValidateIndexUsageType(state);
+  ValidateWriteRatio(state);
   ValidateQueryComplexityType(state);
+  ValidateWriteComplexityType(state);
   ValidateScaleFactor(state);
   ValidateAttributeCount(state);
-  ValidateWriteComplexityType(state);
-  ValidateWriteRatio(state);
   ValidateTuplesPerTileGroup(state);
   ValidateTotalOps(state);
   ValidatePhaseLength(state);

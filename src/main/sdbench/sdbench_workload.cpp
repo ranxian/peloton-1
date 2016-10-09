@@ -1065,51 +1065,42 @@ static void RunSimpleUpdate() {
   std::vector<oid_t> index_key_attrs;
   std::vector<oid_t> update_attrs;
 
+  update_attrs = {15, 16, 17, 18, 19};
+
   auto rand_sample = rand() % state.variability_threshold;
   if (rand_sample <= 5) {
     tuple_key_attrs = {1};
     index_key_attrs = {0};
-    update_attrs = {2};
   } else if (rand_sample <= 9) {
     tuple_key_attrs = {2};
     index_key_attrs = {0};
-    update_attrs = {1};
   } else if (rand_sample <= 11) {
     tuple_key_attrs = {3};
     index_key_attrs = {0};
-    update_attrs = {4};
   } else if (rand_sample <= 15) {
     tuple_key_attrs = {4};
     index_key_attrs = {0};
-    update_attrs = {1};
   } else if (rand_sample <= 17) {
     tuple_key_attrs = {5};
     index_key_attrs = {0};
-    update_attrs = {3};
   } else if (rand_sample <= 18) {
     tuple_key_attrs = {6};
     index_key_attrs = {0};
-    update_attrs = {7};
   } else if (rand_sample <= 19) {
     tuple_key_attrs = {7};
     index_key_attrs = {0};
-    update_attrs = {2};
   } else if (rand_sample <= 20) {
     tuple_key_attrs = {8};
     index_key_attrs = {0};
-    update_attrs = {1};
   } else if (rand_sample <= 21) {
     tuple_key_attrs = {9};
     index_key_attrs = {0};
-    update_attrs = {6};
   } else if (rand_sample <= 23) {
     tuple_key_attrs = {10};
     index_key_attrs = {0};
-    update_attrs = {5};
   } else {
     tuple_key_attrs = {11};
     index_key_attrs = {0};
-    update_attrs = {8};
   }
 
   UNUSED_ATTRIBUTE std::stringstream os;
@@ -1129,51 +1120,42 @@ static void RunComplexUpdate() {
   std::vector<oid_t> index_key_attrs;
   std::vector<oid_t> update_attrs;
 
+  update_attrs = {15, 16, 17, 18, 19};
+
   auto rand_sample = rand() % state.variability_threshold;
   if (rand_sample <= 5) {
     tuple_key_attrs = {1, 4, 7, 8};
     index_key_attrs = {0, 1, 2, 3};
-    update_attrs = {2, 4, 9};
   } else if (rand_sample <= 9) {
     tuple_key_attrs = {2, 3, 5, 7};
     index_key_attrs = {0, 1, 2, 3};
-    update_attrs = {0, 5, 9};
   } else if (rand_sample <= 11) {
     tuple_key_attrs = {3, 8, 9};
     index_key_attrs = {0, 1, 2};
-    update_attrs = {4, 5, 7};
   } else if (rand_sample <= 15) {
     tuple_key_attrs = {4, 9, 11};
     index_key_attrs = {0, 1, 2};
-    update_attrs = {1, 8, 9};
   } else if (rand_sample <= 17) {
     tuple_key_attrs = {5, 8};
     index_key_attrs = {0, 1};
-    update_attrs = {3, 7};
   } else if (rand_sample <= 18) {
     tuple_key_attrs = {6, 10, 11};
     index_key_attrs = {0, 1, 2};
-    update_attrs = {7, 9, 11};
   } else if (rand_sample <= 19) {
     tuple_key_attrs = {7, 8, 10};
     index_key_attrs = {0, 1, 2};
-    update_attrs = {2, 5, 7};
   } else if (rand_sample <= 20) {
     tuple_key_attrs = {8, 9, 11, 12, 13};
     index_key_attrs = {0, 1, 2, 3, 4};
-    update_attrs = {1, 2, 5, 7, 9};
   } else if (rand_sample <= 21) {
     tuple_key_attrs = {9, 10};
     index_key_attrs = {0, 1};
-    update_attrs = {6, 9};
   } else if (rand_sample <= 23) {
     tuple_key_attrs = {10, 12};
     index_key_attrs = {0, 1};
-    update_attrs = {5, 6};
   } else {
     tuple_key_attrs = {11, 12, 14};
     index_key_attrs = {0, 1, 2};
-    update_attrs = {8, 10, 11};
   }
 
   UNUSED_ATTRIBUTE std::stringstream os;
@@ -1444,13 +1426,13 @@ void RunSDBenchTest() {
   state.adapt_layout = false;
   query_itr = 0;
 
-  LOG_INFO("Convergence duration : %.2lf", total_duration);
-
   // Convergence test
   if (state.convergence == true) {
-    LOG_TRACE("Duration of unchanged index configuratio: %.2lf",
+    LOG_TRACE("Duration of unchanged index configuration: %.2lf",
               index_unchanged_timer.GetDuration());
   }
+
+  LOG_INFO("Duration : %.2lf", total_duration);
 
   out.close();
 }
