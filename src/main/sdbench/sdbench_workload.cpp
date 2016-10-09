@@ -1376,14 +1376,13 @@ void RunSDBenchTest() {
   // Reset query counter
   query_itr = 0;
 
-  // Start index tuner
-  index_tuner.Start();
-  index_tuner.AddTable(sdbench_table.get());
-
   Timer<> index_unchanged_timer;
 
-  index_unchanged_timer.Reset();
-  index_unchanged_timer.Start();
+  // Start index tuner
+  if(state.index_usage_type != INDEX_USAGE_TYPE_NEVER){
+    index_tuner.Start();
+    index_tuner.AddTable(sdbench_table.get());
+  }
 
   for (oid_t phase_itr = 0; phase_itr < phase_count; phase_itr++) {
     double rand_sample = GetRandomSample();
@@ -1399,25 +1398,20 @@ void RunSDBenchTest() {
     }
 
     // Check index convergence
-    bool converged = HasIndexConfigurationConverged();
-
-    if (converged && state.convergence == true) {
-      LOG_INFO("Index converged");
-      break;
+    if (state.convergence == true) {
+      bool converged = HasIndexConfigurationConverged();
+      if(converged == true) {
+        break;
+      }
     }
 
-    // Reset the timer
-    if (index_unchanged_phase_count == 0) {
-      index_unchanged_timer.Reset();
-      index_unchanged_timer.Start();
-    }
   }
 
-  // Stop timer
-  index_unchanged_timer.Stop();
   // Stop index tuner
-  index_tuner.Stop();
-  index_tuner.ClearTables();
+  if(state.index_usage_type != INDEX_USAGE_TYPE_NEVER){
+    index_tuner.Stop();
+    index_tuner.ClearTables();
+  }
 
   // Drop Indexes
   DropIndexes();
@@ -1425,12 +1419,6 @@ void RunSDBenchTest() {
   // Reset
   state.adapt_layout = false;
   query_itr = 0;
-
-  // Convergence test
-  if (state.convergence == true) {
-    LOG_TRACE("Duration of unchanged index configuration: %.2lf",
-              index_unchanged_timer.GetDuration());
-  }
 
   LOG_INFO("Duration : %.2lf", total_duration);
 
