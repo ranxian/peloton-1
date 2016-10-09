@@ -752,6 +752,10 @@ void DataTable::DropIndexWithOid(const oid_t &index_oid) {
 
   for (std::size_t index_itr = 0; index_itr < index_count; index_itr++) {
     index = indexes_.Find(index_itr);
+    if (index == nullptr){
+      continue;
+    }
+
     if (index->GetOid() == index_oid) {
       break;
     }

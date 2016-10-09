@@ -376,8 +376,10 @@ static std::shared_ptr<index::Index> PickIndex(storage::DataTable *table,
     auto index_attrs = table->GetIndexAttrs(index_itr);
 
     auto index = table->GetIndex(index_itr);
-    UNUSED_ATTRIBUTE auto index_metadata = index->GetMetadata();
-    LOG_TRACE("Available Index :: %s", index_metadata->GetInfo().c_str());
+    // Check if index exists
+    if(index == nullptr){
+      continue;
+    }
 
     // Some attribute did not match
     if (index_attrs != query_attrs_set) {

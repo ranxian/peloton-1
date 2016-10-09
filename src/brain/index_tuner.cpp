@@ -134,6 +134,9 @@ void IndexTuner::BuildIndices(storage::DataTable* table) {
   for (oid_t index_itr = 0; index_itr < index_count; index_itr++) {
     // Get index
     auto index = table->GetIndex(index_itr);
+    if(index == nullptr){
+      continue;
+    }
 
     // Build index
     BuildIndex(table, index);
@@ -305,16 +308,19 @@ void IndexTuner::DropIndexes(storage::DataTable* table) {
   oid_t index_itr;
   for (index_itr = 0; index_itr < index_count; index_itr++) {
     auto index = table->GetIndex(index_itr);
+    if(index == nullptr){
+      continue;
+    }
+
     auto index_metadata = index->GetMetadata();
     auto average_index_utility = index_metadata->GetUtility();
     UNUSED_ATTRIBUTE auto index_oid = index->GetOid();
 
     // Check if index utility below threshold and drop if needed
     if (average_index_utility < index_utility_threshold) {
-      LOG_INFO("Dropping index : %s", index_metadata->GetInfo().c_str());
+      LOG_TRACE("Dropping index : %s", index_metadata->GetInfo().c_str());
 
-      // TODO: Drop index ?
-      //table->DropIndexWithOid(index_oid);
+      table->DropIndexWithOid(index_oid);
 
       // Update index count
       index_count = table->GetIndexCount();
@@ -374,6 +380,10 @@ void UpdateIndexUtility(storage::DataTable* table,
   for (oid_t index_itr = 0; index_itr < index_count; index_itr++) {
     // Get index
     auto index = table->GetIndex(index_itr);
+    if(index == nullptr){
+      continue;
+    }
+
     auto index_metadata = index->GetMetadata();
     auto index_key_attrs = index_metadata->GetKeyAttrs();
 
