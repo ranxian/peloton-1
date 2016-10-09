@@ -10,14 +10,13 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #pragma once
 
-#include <string>
 #include <getopt.h>
-#include <vector>
 #include <sys/time.h>
 #include <iostream>
+#include <string>
+#include <vector>
 
 #include "storage/data_table.h"
 
@@ -28,12 +27,12 @@ namespace sdbench {
 enum IndexUsageType {
   INDEX_USAGE_TYPE_INVALID = 0,
 
-  INDEX_USAGE_TYPE_AGGRESSIVE = 1,   // use partial indexes aggressively
-  INDEX_USAGE_TYPE_BALANCED = 2,     // use partial indexes balanced
-  INDEX_USAGE_TYPE_CONSERVATIVE = 3, // use partial indexes conservatively
-  INDEX_USAGE_TYPE_NEVER = 4,        // don't use indexes (no online tuning)
+  INDEX_USAGE_TYPE_AGGRESSIVE = 1,    // use partial indexes aggressively
+  INDEX_USAGE_TYPE_BALANCED = 2,      // use partial indexes balanced
+  INDEX_USAGE_TYPE_CONSERVATIVE = 3,  // use partial indexes conservatively
+  INDEX_USAGE_TYPE_NEVER = 4,         // don't use indexes (no online tuning)
 
-  INDEX_USAGE_TYPE_FULL = 5,         // only use full indexes
+  INDEX_USAGE_TYPE_FULL = 5,  // only use full indexes
 };
 
 enum QueryComplexityType {
@@ -45,6 +44,13 @@ enum QueryComplexityType {
 
 };
 
+enum WriteComplexityType {
+  WRITE_COMPLEXITY_TYPE_INVALID = 0,
+
+  WRITE_COMPLEXITY_TYPE_SIMPLE = 1,
+  WRITE_COMPLEXITY_TYPE_COMPLEX = 2
+};
+
 extern int orig_scale_factor;
 
 class configuration {
@@ -54,6 +60,9 @@ class configuration {
 
   // Complexity of the query.
   QueryComplexityType query_complexity_type;
+
+  // Complexity of update.
+  WriteComplexityType write_complexity_type;
 
   // size of the table
   int scale_factor;
@@ -70,7 +79,7 @@ class configuration {
   // column count
   int attribute_count;
 
-  // update ratio
+  // write ratio
   double write_ratio;
 
   // # of times to run operator
@@ -106,7 +115,6 @@ class configuration {
 
   // VARIABILITY PARAMETER
   oid_t variability_threshold;
-
 };
 
 void Usage(FILE *out);

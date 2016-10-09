@@ -56,6 +56,7 @@
 #include "expression/conjunction_expression.h"
 #include "expression/constant_value_expression.h"
 #include "expression/expression_util.h"
+#include "expression/operator_expression.h"
 #include "expression/tuple_value_expression.h"
 
 #include "planner/abstract_plan.h"
@@ -98,7 +99,7 @@ oid_t sdbench_tuple_counter = -1000000;
 std::vector<oid_t> column_counts = {50, 500};
 
 // Index tuner
-brain::IndexTuner& index_tuner = brain::IndexTuner::GetInstance();
+brain::IndexTuner &index_tuner = brain::IndexTuner::GetInstance();
 
 static int GetLowerBound() {
   int tuple_count = state.scale_factor * state.tuples_per_tilegroup;
@@ -609,11 +610,11 @@ static void RunComplexQuery() {
 
   if (is_join_query == true) {
     LOG_TRACE("Complex :: %s", GetOidVectorString(tuple_key_attrs).c_str());
-  }
-  else if (is_aggregate_query == true) {
-    LOG_TRACE("Complex :: %s", GetOidVectorString(left_table_tuple_key_attrs + right_table_tuple_key_attrs).c_str());
-  }
-  else {
+  } else if (is_aggregate_query == true) {
+    LOG_TRACE("Complex :: %s", GetOidVectorString(left_table_tuple_key_attrs +
+                                                  right_table_tuple_key_attrs)
+                                   .c_str());
+  } else {
     LOG_ERROR("Invalid query \n");
     return;
   }
@@ -622,23 +623,16 @@ static void RunComplexQuery() {
   for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
     // Invoke appropriate query
     if (is_join_query == true) {
-      JoinQueryHelper(left_table_tuple_key_attrs,
-                      left_table_index_key_attrs,
-                      right_table_tuple_key_attrs,
-                      right_table_index_key_attrs,
-                      left_table_join_column,
-                      right_table_join_column);
-    }
-    else if (is_aggregate_query == true) {
-      AggregateQueryHelper(tuple_key_attrs,
-                           index_key_attrs);
-    }
-    else {
+      JoinQueryHelper(left_table_tuple_key_attrs, left_table_index_key_attrs,
+                      right_table_tuple_key_attrs, right_table_index_key_attrs,
+                      left_table_join_column, right_table_join_column);
+    } else if (is_aggregate_query == true) {
+      AggregateQueryHelper(tuple_key_attrs, index_key_attrs);
+    } else {
       LOG_ERROR("Invalid query \n");
       return;
     }
   }
-
 }
 
 static void JoinQueryHelper(
@@ -646,8 +640,7 @@ static void JoinQueryHelper(
     const std::vector<oid_t> &left_table_index_key_attrs,
     const std::vector<oid_t> &right_table_tuple_key_attrs,
     const std::vector<oid_t> &right_table_index_key_attrs,
-    const oid_t left_table_join_column,
-    const oid_t right_table_join_column) {
+    const oid_t left_table_join_column, const oid_t right_table_join_column) {
   LOG_TRACE("Run join query on left table: %s and right table: %s",
             GetOidVectorString(left_table_tuple_key_attrs).c_str(),
             GetOidVectorString(right_table_tuple_key_attrs).c_str());
@@ -699,8 +692,8 @@ static void JoinQueryHelper(
                                            right_table_join_column);
 
   std::unique_ptr<expression::ComparisonExpression<expression::CmpLt>>
-  join_predicate(new expression::ComparisonExpression<expression::CmpLt>(
-      EXPRESSION_TYPE_COMPARE_LESSTHAN, left_table_attr, right_table_attr));
+      join_predicate(new expression::ComparisonExpression<expression::CmpLt>(
+          EXPRESSION_TYPE_COMPARE_LESSTHAN, left_table_attr, right_table_attr));
 
   std::unique_ptr<const planner::ProjectInfo> project_info(nullptr);
   std::shared_ptr<const catalog::Schema> schema(nullptr);
@@ -770,7 +763,8 @@ static void JoinQueryHelper(
 
 static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
                                  const std::vector<oid_t> &index_key_attrs) {
-  LOG_TRACE("Run aggregate query on %s ", GetOidVectorString(tuple_key_attrs).c_str());
+  LOG_TRACE("Run aggregate query on %s ",
+            GetOidVectorString(tuple_key_attrs).c_str());
   const bool is_inlined = true;
   auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
 
@@ -831,7 +825,7 @@ static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
         EXPRESSION_TYPE_AGGREGATE_MAX,
         expression::ExpressionUtil::TupleValueFactory(VALUE_TYPE_INTEGER, 0,
                                                       column_id),
-                                                      false);
+        false);
     agg_terms.push_back(max_column_agg);
   }
 
@@ -967,6 +961,228 @@ static void InsertHelper() {
 }
 
 /**
+ * @brief Run write transactions
+ *
+ * @param tuple_key_attrs Tuple attributes to query on.
+ * @param index_key_attrs Index attributes to query on.
+ * @param update_attrs Columns to be updated. The value value of each attribute
+ * in update_attrs will be updated to -v, where v is the original value, and -v
+ * is minus original value.
+ */
+static void UpdateHelper(const std::vector<oid_t> &tuple_key_attrs,
+                         const std::vector<oid_t> &index_key_attrs,
+                         const std::vector<oid_t> &update_attrs) {
+  auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
+  auto txn = txn_manager.BeginTransaction();
+
+  //////////////////////////////////////////
+  // SCAN + PREDICATE
+  //////////////////////////////////////////
+
+  std::vector<oid_t> column_ids;
+  oid_t column_count = state.attribute_count;
+
+  column_ids.push_back(0);
+  for (oid_t col_itr = 0; col_itr < column_count; col_itr++) {
+    column_ids.push_back(col_itr);
+  }
+
+  std::unique_ptr<executor::ExecutorContext> context(
+      new executor::ExecutorContext(txn));
+
+  auto hybrid_scan_node =
+      CreateHybridScanPlan(tuple_key_attrs, index_key_attrs, column_ids);
+  executor::HybridScanExecutor hybrid_scan_executor(hybrid_scan_node.get(),
+                                                    context.get());
+
+  //////////////////////////////////////////
+  // UPDATE
+  //////////////////////////////////////////
+
+  // Update the value of each attribute in update_attrs to -v, where v is the
+  // original value, and -v is minus original value.
+
+  std::vector<Value> values;
+  TargetList target_list;
+  DirectMapList direct_map_list;
+
+  target_list.clear();
+  direct_map_list.clear();
+
+  // Build target_list: -value for update_attrs
+  for (oid_t update_attr : update_attrs) {
+    auto tuple_value_expression = new expression::TupleValueExpression(
+        VALUE_TYPE_INTEGER, 0, update_attr);
+    auto minus_value_expression =
+        new expression::OperatorUnaryMinusExpression(tuple_value_expression);
+    target_list.emplace_back(update_attr, minus_value_expression);
+  }
+
+  // Build direct_map_list: value unchanged for other attributes
+  oid_t update_attr_itr = 0;
+  for (oid_t col_itr = 0; col_itr < column_count; col_itr++) {
+    // Skip the updated column
+    if (update_attr_itr > update_attrs.size() ||
+        col_itr != update_attrs[update_attr_itr]) {
+      direct_map_list.emplace_back(col_itr,
+                                   std::pair<oid_t, oid_t>(0, col_itr));
+    } else {
+      update_attr_itr++;
+    }
+  }
+
+  std::unique_ptr<const planner::ProjectInfo> project_info(
+      new planner::ProjectInfo(std::move(target_list),
+                               std::move(direct_map_list)));
+  planner::UpdatePlan update_node(sdbench_table.get(), std::move(project_info));
+
+  executor::UpdateExecutor update_executor(&update_node, context.get());
+
+  /////////////////////////////////////////////////////////
+  // EXECUTE
+  /////////////////////////////////////////////////////////
+
+  std::vector<executor::AbstractExecutor *> executors;
+  executors.push_back(&update_executor);
+
+  /////////////////////////////////////////////////////////
+  // COLLECT STATS
+  /////////////////////////////////////////////////////////
+  std::vector<double> index_columns_accessed(tuple_key_attrs.begin(),
+                                             tuple_key_attrs.end());
+  auto selectivity = state.selectivity;
+
+  ExecuteTest(executors, brain::SAMPLE_TYPE_ACCESS, {index_columns_accessed},
+              selectivity);
+
+  txn_manager.CommitTransaction();
+}
+
+static void RunSimpleUpdate() {
+  std::vector<oid_t> tuple_key_attrs;
+  std::vector<oid_t> index_key_attrs;
+  std::vector<oid_t> update_attrs;
+
+  auto rand_sample = rand() % state.variability_threshold;
+  if (rand_sample <= 5) {
+    tuple_key_attrs = {1};
+    index_key_attrs = {0};
+    update_attrs = {2};
+  } else if (rand_sample <= 9) {
+    tuple_key_attrs = {2};
+    index_key_attrs = {0};
+    update_attrs = {1};
+  } else if (rand_sample <= 11) {
+    tuple_key_attrs = {3};
+    index_key_attrs = {0};
+    update_attrs = {4};
+  } else if (rand_sample <= 15) {
+    tuple_key_attrs = {4};
+    index_key_attrs = {0};
+    update_attrs = {1};
+  } else if (rand_sample <= 17) {
+    tuple_key_attrs = {5};
+    index_key_attrs = {0};
+    update_attrs = {3};
+  } else if (rand_sample <= 18) {
+    tuple_key_attrs = {6};
+    index_key_attrs = {0};
+    update_attrs = {7};
+  } else if (rand_sample <= 19) {
+    tuple_key_attrs = {7};
+    index_key_attrs = {0};
+    update_attrs = {2};
+  } else if (rand_sample <= 20) {
+    tuple_key_attrs = {8};
+    index_key_attrs = {0};
+    update_attrs = {1};
+  } else if (rand_sample <= 21) {
+    tuple_key_attrs = {9};
+    index_key_attrs = {0};
+    update_attrs = {6};
+  } else if (rand_sample <= 23) {
+    tuple_key_attrs = {10};
+    index_key_attrs = {0};
+    update_attrs = {5};
+  } else {
+    tuple_key_attrs = {11};
+    index_key_attrs = {0};
+    update_attrs = {8};
+  }
+
+  UNUSED_ATTRIBUTE std::stringstream os;
+  os << "Simple Update :: ";
+  for (auto tuple_key_attr : tuple_key_attrs) {
+    os << tuple_key_attr << " ";
+  }
+  LOG_TRACE("%s", os.str().c_str());
+
+  UpdateHelper(tuple_key_attrs, index_key_attrs, update_attrs);
+}
+
+static void RunComplexUpdate() {
+  std::vector<oid_t> tuple_key_attrs;
+  std::vector<oid_t> index_key_attrs;
+  std::vector<oid_t> update_attrs;
+
+  auto rand_sample = rand() % state.variability_threshold;
+  if (rand_sample <= 5) {
+    tuple_key_attrs = {1, 4, 7, 8};
+    index_key_attrs = {0, 1, 2, 3};
+    update_attrs = {2, 4, 9};
+  } else if (rand_sample <= 9) {
+    tuple_key_attrs = {2, 3, 5, 7};
+    index_key_attrs = {0, 1, 2, 3};
+    update_attrs = {0, 5, 9};
+  } else if (rand_sample <= 11) {
+    tuple_key_attrs = {3, 8, 9};
+    index_key_attrs = {0, 1, 2};
+    update_attrs = {4, 5, 7};
+  } else if (rand_sample <= 15) {
+    tuple_key_attrs = {4, 9, 11};
+    index_key_attrs = {0, 1, 2};
+    update_attrs = {1, 8, 9};
+  } else if (rand_sample <= 17) {
+    tuple_key_attrs = {5, 8};
+    index_key_attrs = {0, 1};
+    update_attrs = {3, 7};
+  } else if (rand_sample <= 18) {
+    tuple_key_attrs = {6, 10, 11};
+    index_key_attrs = {0, 1, 2};
+    update_attrs = {7, 9, 11};
+  } else if (rand_sample <= 19) {
+    tuple_key_attrs = {7, 8, 10};
+    index_key_attrs = {0, 1, 2};
+    update_attrs = {2, 5, 7};
+  } else if (rand_sample <= 20) {
+    tuple_key_attrs = {8, 9, 11, 12, 13};
+    index_key_attrs = {0, 1, 2, 3, 4};
+    update_attrs = {1, 2, 5, 7, 9};
+  } else if (rand_sample <= 21) {
+    tuple_key_attrs = {9, 10};
+    index_key_attrs = {0, 1};
+    update_attrs = {6, 9};
+  } else if (rand_sample <= 23) {
+    tuple_key_attrs = {10, 12};
+    index_key_attrs = {0, 1};
+    update_attrs = {5, 6};
+  } else {
+    tuple_key_attrs = {11, 12, 14};
+    index_key_attrs = {0, 1, 2};
+    update_attrs = {8, 10, 11};
+  }
+
+  UNUSED_ATTRIBUTE std::stringstream os;
+  os << "Complex Update :: ";
+  for (auto tuple_key_attr : tuple_key_attrs) {
+    os << tuple_key_attr << " ";
+  }
+  LOG_TRACE("%s", os.str().c_str());
+
+  UpdateHelper(tuple_key_attrs, index_key_attrs, update_attrs);
+}
+
+/**
  * @brief Run query depending on query type
  */
 static void RunQuery() {
@@ -982,6 +1198,25 @@ static void RunQuery() {
       break;
     default:
       break;
+  }
+}
+
+/**
+ * @brief Run write txn depending on write type
+ */
+static void RunWrite() {
+  LOG_TRACE("Run write");
+  for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
+    switch (state.write_complexity_type) {
+      case WRITE_COMPLEXITY_TYPE_SIMPLE:
+        RunSimpleUpdate();
+        break;
+      case WRITE_COMPLEXITY_TYPE_COMPLEX:
+        RunComplexUpdate();
+        break;
+      default:
+        break;
+    }
   }
 }
 
@@ -1026,7 +1261,6 @@ static bool HasIndexConfigurationConverged() {
   oid_t index_count = sdbench_table->GetIndexCount();
   auto table_tile_group_count = sdbench_table->GetTileGroupCount();
   for (oid_t index_itr = 0; index_itr < index_count; index_itr++) {
-
     // Get index
     auto index = sdbench_table->GetIndex(index_itr);
     auto indexed_tile_group_offset = index->GetIndexedTileGroupOffset();
@@ -1076,7 +1310,8 @@ static bool HasIndexConfigurationConverged() {
   prev_index_summary = index_summary;
 
   // Check threshold # of phases
-  int convergence_phase_threshold = state.convergence_query_threshold/state.phase_length;
+  int convergence_phase_threshold =
+      state.convergence_query_threshold / state.phase_length;
   if (index_unchanged_phase_count >= convergence_phase_threshold) {
     return true;
   }
@@ -1092,8 +1327,8 @@ static bool HasIndexConfigurationConverged() {
  * @param N Number of lines to be removed.
  * @param reverse Truncate from the reverse or not
  */
-UNUSED_ATTRIBUTE static void TruncateLines(const std::string &filename, size_t N,
-                                           bool reverse = false) {
+UNUSED_ATTRIBUTE static void TruncateLines(const std::string &filename,
+                                           size_t N, bool reverse = false) {
   std::vector<std::string> lines;
   std::ifstream file(filename);
   std::string line;
@@ -1121,7 +1356,6 @@ UNUSED_ATTRIBUTE static void TruncateLines(const std::string &filename, size_t N
 }
 
 void RunSDBenchTest() {
-
   // Setup index tuner
   index_tuner.SetSampleCountThreshold(state.sample_count_threshold);
   index_tuner.SetMaxTileGroupsIndexed(state.max_tile_groups_indexed);
@@ -1170,6 +1404,7 @@ void RunSDBenchTest() {
 
     // Do insert
     if (rand_sample < write_ratio) {
+      RunWrite();
       RunInsert();
     }
     // Do read

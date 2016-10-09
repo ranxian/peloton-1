@@ -26,6 +26,7 @@ void Usage() {
       "Command line options : sdbench <options>\n"
       "   -h --help                          :  Print help message\n"
       "   -f --index_usage_type              :  Types of indexes used\n"
+      "   -u --write_complexity_type         :  Complexity of write\n"
       "   -c --query_complexity_type         :  Complexity of query\n"
       "   -k --scale-factor                  :  # of tile groups\n"
       "   -a --attribute_count               :  # of attributes\n"
@@ -49,6 +50,7 @@ void Usage() {
 static struct option opts[] = {
     {"index_usage_type", optional_argument, NULL, 'f'},
     {"query_complexity_type", optional_argument, NULL, 'c'},
+    {"write_complexity_type", optional_argument, NULL, 'u'},
     {"scale-factor", optional_argument, NULL, 'k'},
     {"attribute_count", optional_argument, NULL, 'a'},
     {"write_ratio", optional_argument, NULL, 'w'},
@@ -119,6 +121,25 @@ static void ValidateQueryComplexityType(const configuration &state) {
         break;
       case QUERY_COMPLEXITY_TYPE_COMPLEX:
         LOG_INFO("%s : COMPLEX", "query_complexity_type ");
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+static void ValidateWriteComplexityType(const configuration &state) {
+  if (state.write_complexity_type < 1 || state.write_complexity_type > 2) {
+    LOG_ERROR("Invalid write_complexity_type :: %d",
+              state.write_complexity_type);
+    exit(EXIT_FAILURE);
+  } else {
+    switch (state.write_complexity_type) {
+      case WRITE_COMPLEXITY_TYPE_SIMPLE:
+        LOG_INFO("write_complexity_type : SIMPLE");
+        break;
+      case WRITE_COMPLEXITY_TYPE_COMPLEX:
+        LOG_INFO("write_complexity_type : COMPLEX");
         break;
       default:
         break;
@@ -275,6 +296,7 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   state.scale_factor = 100.0;
   state.attribute_count = 20;
 
+  state.write_complexity_type = WRITE_COMPLEXITY_TYPE_SIMPLE;
   state.write_ratio = 0.0;
   state.tuples_per_tilegroup = DEFAULT_TUPLES_PER_TILEGROUP;
 
@@ -309,14 +331,18 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   // Parse args
   while (1) {
     int idx = 0;
-    int c = getopt_long(argc, argv, "hf:c:k:a:w:g:y:q:t:s:p:l:v:e:m:o:b:d:",
+    int c = getopt_long(argc, argv, "hf:c:k:a:w:g:y:q:t:s:p:l:v:e:m:o:b:d:u:",
                         opts, &idx);
 
     if (c == -1) break;
 
     switch (c) {
+      // AVAILABLE FLAGS: ijlnrxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
       case 'f':
         state.index_usage_type = (IndexUsageType)atoi(optarg);
+        break;
+      case 'u':
+        state.write_complexity_type = (WriteComplexityType)atoi(optarg);
         break;
       case 'c':
         state.query_complexity_type = (QueryComplexityType)atoi(optarg);
@@ -381,6 +407,7 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   ValidateQueryComplexityType(state);
   ValidateScaleFactor(state);
   ValidateAttributeCount(state);
+  ValidateWriteComplexityType(state);
   ValidateWriteRatio(state);
   ValidateTuplesPerTileGroup(state);
   ValidateTotalOps(state);
