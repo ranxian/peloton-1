@@ -63,6 +63,10 @@ class IndexTuner {
   // Add table to list of tables whose layout must be tuned
   void AddTable(storage::DataTable *table);
 
+  // Add indexes to table
+  void AddIndexes(storage::DataTable* table,
+                  const std::vector<std::vector<double>>& suggested_indices);
+
   // Clear list
   void ClearTables();
 
@@ -72,6 +76,18 @@ class IndexTuner {
 
   void SetMaxTileGroupsIndexed(const oid_t &max_tile_groups_indexed_) {
     max_tile_groups_indexed = max_tile_groups_indexed_;
+  }
+
+  void SetIndexUtilityThreshold(const double& index_utility_threshold_){
+    index_utility_threshold = index_utility_threshold_;
+  }
+
+  void SetIndexCountThreshold(const oid_t& index_count_threshold_){
+    index_count_threshold = index_count_threshold_;
+  }
+
+  void SetWriteRatioThreshold(const double& write_ratio_threshold_){
+    write_ratio_threshold = write_ratio_threshold_;
   }
 
   // Get # of indexes in managed tables
@@ -87,8 +103,6 @@ class IndexTuner {
   void BuildIndices(storage::DataTable *table);
 
   void Analyze(storage::DataTable *table);
-
-  size_t CheckIndexStorageFootprint(storage::DataTable *table);
 
   double ComputeWorkloadWriteRatio(const std::vector<brain::Sample> &samples);
 
@@ -114,13 +128,12 @@ class IndexTuner {
   oid_t sleep_duration = 10;
 
   // Threshold sample count
+  // LEARNING RATE
   oid_t sample_count_threshold = 10;
 
   // # of tile groups to be indexed per iteration
+  // INDEX CONSTRUCTION SPEED
   oid_t max_tile_groups_indexed = 20;
-
-  // storage footprint (KB)
-  size_t max_storage_space = 2 * 1024 * 1024;
 
   // alpha (weight for old samples)
   double alpha = 0.2;
@@ -128,11 +141,19 @@ class IndexTuner {
   // average write ratio
   double average_write_ratio = INVALID_RATIO;
 
-  // write ratio threshold
+  //===--------------------------------------------------------------------===//
+  // DROP Thresholds
+  //===--------------------------------------------------------------------===//
+
+  // index utility threshold below which it will be dropped
+  double index_utility_threshold = 0.2;
+
+  // maximum # of indexes per table
+  oid_t index_count_threshold = 10;
+
+  // write intensive workload ratio threshold
   double write_ratio_threshold = 0.8;
 
-  // index utility threshold
-  double index_utility_threshold = 0.2;
 };
 
 }  // End brain namespace

@@ -1251,42 +1251,6 @@ static bool HasIndexConfigurationConverged() {
   return false;
 }
 
-/**
- * @brief Truncate the first or last N lines from the file. This function is
- * currently used for removing converge time from total duration.
- *
- * @param filename The name of the file, the file must exist
- * @param N Number of lines to be removed.
- * @param reverse Truncate from the reverse or not
- */
-UNUSED_ATTRIBUTE static void TruncateLines(const std::string &filename,
-                                           size_t N, bool reverse = false) {
-  std::vector<std::string> lines;
-  std::ifstream file(filename);
-  std::string line;
-  while (std::getline(file, line)) {
-    lines.push_back(line);
-  }
-  file.close();
-
-  if (N > lines.size()) {
-    LOG_ERROR("Does not have enough lines to truncate");
-  }
-
-  size_t start = 0, end = lines.size();
-  if (reverse) {
-    end -= N;
-  } else {
-    start += N;
-  }
-
-  std::ofstream ofile(filename);
-  for (size_t i = start; i < end; i++) {
-    ofile << lines[i] << std::endl;
-  }
-  ofile.close();
-}
-
 void RunSDBenchTest() {
   // Setup index tuner
   index_tuner.SetSampleCountThreshold(state.sample_count_threshold);

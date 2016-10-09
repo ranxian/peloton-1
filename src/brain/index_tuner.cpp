@@ -256,28 +256,6 @@ std::vector<std::vector<double>> GetSuggestedIndices(
   return suggested_indices;
 }
 
-size_t IndexTuner::CheckIndexStorageFootprint(storage::DataTable* table) {
-  // Construct indices in suggested index list
-  oid_t index_count = table->GetIndexCount();
-  size_t min_tuple_count = 1024;
-  auto tuple_count = std::max(min_tuple_count, table->GetTupleCount());
-
-  // Compute index storage footprint (in KB)
-  size_t per_index_storage_space = tuple_count * 80 / 1024;
-  size_t current_storage_space = index_count * per_index_storage_space;
-
-  LOG_TRACE("Per index storage space : %lu", per_index_storage_space);
-  LOG_TRACE("Current storage space : %lu", current_storage_space);
-
-  int available_storage_space = max_storage_space - current_storage_space;
-  int max_allowed_indexes = available_storage_space / per_index_storage_space;
-
-  LOG_TRACE("Available storage space : %d", available_storage_space);
-  LOG_TRACE("Available index count : %d", max_allowed_indexes);
-
-  return max_allowed_indexes;
-}
-
 double GetCurrentIndexUtility(
     std::set<oid_t> suggested_index_set,
     const std::vector<sample_frequency_map_entry>& list) {
@@ -314,7 +292,7 @@ void IndexTuner::DropIndexes(storage::DataTable* table) {
 
     auto index_metadata = index->GetMetadata();
     auto average_index_utility = index_metadata->GetUtility();
-    UNUSED_ATTRIBUTE auto index_oid = index->GetOid();
+    auto index_oid = index->GetOid();
 
     // Check if index utility below threshold and drop if needed
     if (average_index_utility < index_utility_threshold) {
@@ -328,20 +306,18 @@ void IndexTuner::DropIndexes(storage::DataTable* table) {
   }
 }
 
-void AddIndexes(storage::DataTable* table,
-                const std::vector<std::vector<double>>& suggested_indices,
-                size_t max_allowed_indexes) {
+void IndexTuner::AddIndexes(storage::DataTable* table,
+                            const std::vector<std::vector<double>>& suggested_indices) {
   oid_t index_count = table->GetIndexCount();
   size_t constructed_index_itr = 0;
 
-  for (auto suggested_index : suggested_indices) {
-    // Check if we have storage space
-    if ((max_allowed_indexes <= 0) ||
-        (constructed_index_itr >= max_allowed_indexes)) {
-      LOG_INFO("No more index space");
-      break;
-    }
+  // Check if we have constructed too many indexess
+  if(index_count > index_count_threshold){
+    LOG_TRACE("Constructed too many indexes");
+    return;
+  }
 
+  for (auto suggested_index : suggested_indices) {
     std::set<oid_t> suggested_index_set(suggested_index.begin(),
                                         suggested_index.end());
 
@@ -448,18 +424,23 @@ void IndexTuner::Analyze(storage::DataTable* table) {
   auto suggested_indices = GetSuggestedIndices(sample_frequency_entry_list);
 
   // Check index storage footprint
-  auto max_indexes_allowed = CheckIndexStorageFootprint(table);
+  auto index_count = table->GetIndexCount();
 
-  // Drop indexes if needed
-  auto index_creation_constraint = (max_indexes_allowed <= 0);
+  ////////////////////////////////////////////////
+  // Drop indexes if
+  // a) constructed too many indexes
+  // b) write intensive workloads
+  ////////////////////////////////////////////////
+
+  auto index_overflow = (index_count > index_count_threshold);
   auto write_intensive_workload = (average_write_ratio > write_ratio_threshold);
 
-  if (index_creation_constraint == true || write_intensive_workload == true) {
+  if (index_overflow == true || write_intensive_workload == true) {
     DropIndexes(table);
   }
 
   // Add indexes if needed
-  AddIndexes(table, suggested_indices, max_indexes_allowed);
+  AddIndexes(table, suggested_indices);
 
   // Update index utility
   UpdateIndexUtility(table, sample_frequency_entry_list);

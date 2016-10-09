@@ -115,6 +115,18 @@ class configuration {
 
   // VARIABILITY PARAMETER
   oid_t variability_threshold;
+
+  // DROP PARAMETER
+
+  // index utility threshold
+  double index_utility_threshold;
+
+  // maximum # of indexes per table
+  oid_t index_count_threshold;
+
+  // write intensive workload ratio threshold
+  double write_ratio_threshold;
+
 };
 
 void Usage(FILE *out);
