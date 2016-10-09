@@ -175,7 +175,6 @@ double IndexTuner::ComputeWorkloadWriteRatio(
 
   LOG_TRACE("Average write Ratio : %.2lf", average_write_ratio);
 
-  // TODO: Use average write ratio to throttle index creation
   return average_write_ratio;
 }
 
@@ -312,10 +311,10 @@ void IndexTuner::DropIndexes(storage::DataTable* table) {
 
     // Check if index utility below threshold and drop if needed
     if (average_index_utility < index_utility_threshold) {
-      LOG_TRACE("Dropping index : %s", index_metadata->GetInfo().c_str());
+      LOG_INFO("Dropping index : %s", index_metadata->GetInfo().c_str());
 
-      // TODO: Uncomment this
-      // table->DropIndexWithOid(index_oid);
+      // TODO: Drop index ?
+      //table->DropIndexWithOid(index_oid);
 
       // Update index count
       index_count = table->GetIndexCount();
@@ -444,6 +443,7 @@ void IndexTuner::Analyze(storage::DataTable* table) {
   // Drop indexes if needed
   auto index_creation_constraint = (max_indexes_allowed <= 0);
   auto write_intensive_workload = (average_write_ratio > write_ratio_threshold);
+
   if (index_creation_constraint == true || write_intensive_workload == true) {
     DropIndexes(table);
   }
@@ -455,7 +455,7 @@ void IndexTuner::Analyze(storage::DataTable* table) {
   UpdateIndexUtility(table, sample_frequency_entry_list);
 
   // Display index information
-  // PrintIndexInformation(table);
+  //PrintIndexInformation(table);
 }
 
 void IndexTuner::IndexTuneHelper(storage::DataTable* table) {

@@ -613,7 +613,7 @@ static void RunComplexQuery() {
   } else if (is_aggregate_query == true) {
     LOG_TRACE("Complex :: %s", GetOidVectorString(left_table_tuple_key_attrs +
                                                   right_table_tuple_key_attrs)
-                                   .c_str());
+              .c_str());
   } else {
     LOG_ERROR("Invalid query \n");
     return;
@@ -692,8 +692,8 @@ static void JoinQueryHelper(
                                            right_table_join_column);
 
   std::unique_ptr<expression::ComparisonExpression<expression::CmpLt>>
-      join_predicate(new expression::ComparisonExpression<expression::CmpLt>(
-          EXPRESSION_TYPE_COMPARE_LESSTHAN, left_table_attr, right_table_attr));
+  join_predicate(new expression::ComparisonExpression<expression::CmpLt>(
+      EXPRESSION_TYPE_COMPARE_LESSTHAN, left_table_attr, right_table_attr));
 
   std::unique_ptr<const planner::ProjectInfo> project_info(nullptr);
   std::shared_ptr<const catalog::Schema> schema(nullptr);
@@ -754,7 +754,8 @@ static void JoinQueryHelper(
   auto selectivity = state.selectivity;
 
   ExecuteTest(
-      executors, brain::SAMPLE_TYPE_ACCESS,
+      executors,
+      brain::SAMPLE_TYPE_ACCESS,
       {left_table_index_columns_accessed, right_table_index_columns_accessed},
       selectivity);
 
@@ -825,7 +826,7 @@ static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
         EXPRESSION_TYPE_AGGREGATE_MAX,
         expression::ExpressionUtil::TupleValueFactory(VALUE_TYPE_INTEGER, 0,
                                                       column_id),
-        false);
+                                                      false);
     agg_terms.push_back(max_column_agg);
   }
 
@@ -895,66 +896,9 @@ static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
                                              tuple_key_attrs.end());
   auto selectivity = state.selectivity;
 
-  ExecuteTest(executors, brain::SAMPLE_TYPE_ACCESS, {index_columns_accessed},
-              selectivity);
-
-  txn_manager.CommitTransaction();
-}
-
-static void InsertHelper() {
-  auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
-
-  auto txn = txn_manager.BeginTransaction();
-
-  /////////////////////////////////////////////////////////
-  // INSERT
-  /////////////////////////////////////////////////////////
-
-  std::unique_ptr<executor::ExecutorContext> context(
-      new executor::ExecutorContext(txn));
-
-  std::vector<Value> values;
-  Value insert_val = ValueFactory::GetIntegerValue(++sdbench_tuple_counter);
-  TargetList target_list;
-  DirectMapList direct_map_list;
-  std::vector<oid_t> column_ids;
-
-  target_list.clear();
-  direct_map_list.clear();
-
-  for (auto col_id = 0; col_id <= state.attribute_count; col_id++) {
-    auto expression =
-        expression::ExpressionUtil::ConstantValueFactory(insert_val);
-    target_list.emplace_back(col_id, expression);
-    column_ids.push_back(col_id);
-  }
-
-  std::unique_ptr<const planner::ProjectInfo> project_info(
-      new planner::ProjectInfo(std::move(target_list),
-                               std::move(direct_map_list)));
-
-  auto table_tuple_count = state.tuples_per_tilegroup * state.scale_factor;
-  auto bulk_insert_count = state.selectivity * table_tuple_count;
-
-  LOG_TRACE("Bulk insert count : %d", bulk_insert_count);
-  planner::InsertPlan insert_node(sdbench_table.get(), std::move(project_info),
-                                  bulk_insert_count);
-  executor::InsertExecutor insert_executor(&insert_node, context.get());
-
-  /////////////////////////////////////////////////////////
-  // EXECUTE
-  /////////////////////////////////////////////////////////
-
-  std::vector<executor::AbstractExecutor *> executors;
-  executors.push_back(&insert_executor);
-
-  /////////////////////////////////////////////////////////
-  // COLLECT STATS
-  /////////////////////////////////////////////////////////
-  std::vector<double> index_columns_accessed;
-  double selectivity = 0;
-
-  ExecuteTest(executors, brain::SAMPLE_TYPE_UPDATE, {index_columns_accessed},
+  ExecuteTest(executors,
+              brain::SAMPLE_TYPE_ACCESS,
+              {index_columns_accessed},
               selectivity);
 
   txn_manager.CommitTransaction();
@@ -1054,7 +998,9 @@ static void UpdateHelper(const std::vector<oid_t> &tuple_key_attrs,
                                              tuple_key_attrs.end());
   auto selectivity = state.selectivity;
 
-  ExecuteTest(executors, brain::SAMPLE_TYPE_ACCESS, {index_columns_accessed},
+  ExecuteTest(executors,
+              brain::SAMPLE_TYPE_UPDATE,
+              {index_columns_accessed},
               selectivity);
 
   txn_manager.CommitTransaction();
@@ -1112,7 +1058,11 @@ static void RunSimpleUpdate() {
     LOG_INFO("%s", os.str().c_str());
   }
 
-  UpdateHelper(tuple_key_attrs, index_key_attrs, update_attrs);
+  // PHASE LENGTH
+  for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
+    UpdateHelper(tuple_key_attrs, index_key_attrs, update_attrs);
+  }
+
 }
 
 static void RunComplexUpdate() {
@@ -1165,13 +1115,18 @@ static void RunComplexUpdate() {
   }
   LOG_TRACE("%s", os.str().c_str());
 
-  UpdateHelper(tuple_key_attrs, index_key_attrs, update_attrs);
+  // PHASE LENGTH
+  for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
+    UpdateHelper(tuple_key_attrs, index_key_attrs, update_attrs);
+  }
+
 }
 
 /**
  * @brief Run query depending on query type
  */
 static void RunQuery() {
+  LOG_TRACE("Run query");
   switch (state.query_complexity_type) {
     case QUERY_COMPLEXITY_TYPE_SIMPLE:
       RunSimpleQuery();
@@ -1192,26 +1147,15 @@ static void RunQuery() {
  */
 static void RunWrite() {
   LOG_TRACE("Run write");
-  for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
-    switch (state.write_complexity_type) {
-      case WRITE_COMPLEXITY_TYPE_SIMPLE:
-        RunSimpleUpdate();
-        break;
-      case WRITE_COMPLEXITY_TYPE_COMPLEX:
-        RunComplexUpdate();
-        break;
-      default:
-        break;
-    }
-  }
-}
-
-static void RunInsert() {
-  LOG_TRACE("Run Insert");
-
-  // PHASE LENGTH
-  for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
-    InsertHelper();
+  switch (state.write_complexity_type) {
+    case WRITE_COMPLEXITY_TYPE_SIMPLE:
+      RunSimpleUpdate();
+      break;
+    case WRITE_COMPLEXITY_TYPE_COMPLEX:
+      RunComplexUpdate();
+      break;
+    default:
+      break;
   }
 }
 
@@ -1390,7 +1334,6 @@ void RunSDBenchTest() {
     // Do insert
     if (rand_sample < write_ratio) {
       RunWrite();
-      RunInsert();
     }
     // Do read
     else {
