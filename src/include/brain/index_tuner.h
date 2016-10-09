@@ -12,20 +12,20 @@
 
 #pragma once
 
-#include <vector>
-#include <mutex>
 #include <atomic>
+#include <mutex>
 #include <thread>
+#include <vector>
 
 #include "common/types.h"
 
 namespace peloton {
 
-namespace index{
+namespace index {
 class Index;
 }
 
-namespace storage{
+namespace storage {
 class DataTable;
 }
 
@@ -38,9 +38,7 @@ class Sample;
 //===--------------------------------------------------------------------===//
 
 class IndexTuner {
-
  public:
-
   IndexTuner(const IndexTuner &) = delete;
   IndexTuner &operator=(const IndexTuner &) = delete;
   IndexTuner(IndexTuner &&) = delete;
@@ -63,16 +61,16 @@ class IndexTuner {
   void Stop();
 
   // Add table to list of tables whose layout must be tuned
-  void AddTable(storage::DataTable* table);
+  void AddTable(storage::DataTable *table);
 
   // Clear list
   void ClearTables();
 
-  void SetSampleCountThreshold(const oid_t& sample_count_threshold_){
+  void SetSampleCountThreshold(const oid_t &sample_count_threshold_) {
     sample_count_threshold = sample_count_threshold_;
   }
 
-  void SetMaxTileGroupsIndexed(const oid_t& max_tile_groups_indexed_){
+  void SetMaxTileGroupsIndexed(const oid_t &max_tile_groups_indexed_) {
     max_tile_groups_indexed = max_tile_groups_indexed_;
   }
 
@@ -80,27 +78,25 @@ class IndexTuner {
   oid_t GetIndexCount() const;
 
  protected:
-
   // Index tuning helper
-  void IndexTuneHelper(storage::DataTable* table);
+  void IndexTuneHelper(storage::DataTable *table);
 
   void BuildIndex(storage::DataTable *table,
                   std::shared_ptr<index::Index> index);
 
   void BuildIndices(storage::DataTable *table);
 
-  void Analyze(storage::DataTable* table);
+  void Analyze(storage::DataTable *table);
 
   size_t CheckIndexStorageFootprint(storage::DataTable *table);
 
-  double ComputeWorkloadWriteRatio(const std::vector<brain::Sample>& samples);
+  double ComputeWorkloadWriteRatio(const std::vector<brain::Sample> &samples);
 
   void DropIndexes(storage::DataTable *table);
 
  private:
-
   // Tables whose indices must be tuned
-  std::vector<storage::DataTable*> tables;
+  std::vector<storage::DataTable *> tables;
 
   std::mutex index_tuner_mutex;
 
@@ -137,9 +133,7 @@ class IndexTuner {
 
   // index utility threshold
   double index_utility_threshold = 0.2;
-
 };
-
 
 }  // End brain namespace
 }  // End peloton namespace

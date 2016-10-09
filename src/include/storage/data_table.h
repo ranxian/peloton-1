@@ -12,16 +12,17 @@
 
 #pragma once
 
-#include <memory>
-#include <queue>
 #include <map>
+#include <memory>
 #include <mutex>
+#include <queue>
 #include <set>
 
+#include "common/abstract_tuple.h"
 #include "common/platform.h"
-#include "storage/abstract_table.h"
 #include "container/lock_free_array.h"
 #include "index/index.h"
+#include "storage/abstract_table.h"
 
 //===--------------------------------------------------------------------===//
 // GUC Variables
@@ -228,6 +229,13 @@ class DataTable : public AbstractTable {
   // try to insert into the indices
   bool InsertInIndexes(const storage::Tuple *tuple, ItemPointer location);
 
+  // delete from specific index
+  bool DeleteInIndex(oid_t index_offset, const AbstractTuple *tuple,
+                     ItemPointer location);
+
+  // try to delete from indices
+  bool DeleteInIndexes(const AbstractTuple *tuple, ItemPointer location);
+
  protected:
   //===--------------------------------------------------------------------===//
   // INTEGRITY CHECKS
@@ -277,7 +285,8 @@ class DataTable : public AbstractTable {
   // set of current tile groups
   static constexpr std::size_t ACTIVE_TILE_GROUP_COUNT = 8;
 
-  std::shared_ptr<storage::TileGroup> last_tile_groups_[ACTIVE_TILE_GROUP_COUNT];
+  std::shared_ptr<storage::TileGroup>
+      last_tile_groups_[ACTIVE_TILE_GROUP_COUNT];
 
   // data table mutex
   std::mutex data_table_mutex_;
