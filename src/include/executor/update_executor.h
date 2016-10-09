@@ -10,14 +10,16 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #pragma once
 
 #include <vector>
 
+#include "common/types.h"
 #include "executor/abstract_executor.h"
 #include "expression/abstract_expression.h"
 #include "planner/update_plan.h"
+#include "storage/tile.h"
+#include "storage/tile_group_header.h"
 
 namespace peloton {
 namespace executor {
@@ -34,6 +36,8 @@ class UpdateExecutor : public AbstractExecutor {
   bool DInit();
 
   bool DExecute();
+
+  void InplaceUpdate(storage::TileGroup *tile_group, ItemPointer location);
 
  private:
   storage::DataTable *target_table_ = nullptr;
