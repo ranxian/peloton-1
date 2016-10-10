@@ -83,7 +83,7 @@ static void AddIndex(storage::DataTable* table,
   // Add index
   table->AddIndex(adhoc_index);
 
-  LOG_TRACE("Added suggested index : %s", index_metadata->GetInfo().c_str());
+  LOG_TRACE("Creating index : %s", index_metadata->GetInfo().c_str());
 }
 
 void IndexTuner::BuildIndex(storage::DataTable* table,
