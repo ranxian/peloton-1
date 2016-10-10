@@ -43,8 +43,8 @@ void Usage() {
       "   -u --write_complexity_type         :  Complexity of write\n"
       "   -v --verbose                       :  Output verbosity\n"
       "   -w --write_ratio                   :  Fraction of writes\n"
-      "   -x --index_utility_threshold       :  Index utility threshold\n"
-      "   -y --index_count_threshold         :  Index count threshold\n"
+      "   -x --index_count_threshold         :  Index count threshold\n"
+      "   -y --index_utility_threshold       :  Index utility threshold\n"
       "   -z --write_ratio_threshold         :  Write ratio threshold\n"
   );
   exit(EXIT_FAILURE);
@@ -69,6 +69,9 @@ static struct option opts[] = {
     {"write_complexity_type", optional_argument, NULL, 'u'},
     {"verbose", optional_argument, NULL, 'v'},
     {"write_ratio", optional_argument, NULL, 'w'},
+    {"index_count_threshold", optional_argument, NULL, 'x'},
+    {"index_utility_threshold", optional_argument, NULL, 'y'},
+    {"write_ratio_threshold", optional_argument, NULL, 'z'},
     {NULL, 0, NULL, 0}
 };
 
@@ -306,16 +309,6 @@ static void ValidateVariabilityThreshold(const configuration &state) {
   LOG_INFO("%s : %u", "variability_threshold", state.variability_threshold);
 }
 
-static void ValidateIndexUtilityThreshold(const configuration &state) {
-  if (state.index_utility_threshold < 0 || state.index_utility_threshold > 1) {
-    LOG_ERROR("Invalid index_utility_threshold :: %.1lf",
-              state.index_utility_threshold);
-    exit(EXIT_FAILURE);
-  }
-
-  LOG_INFO("%s : %.1lf", "index_utility_threshold", state.index_utility_threshold);
-}
-
 static void ValidateIndexCountThreshold(const configuration &state) {
   if (state.index_count_threshold == 0) {
     LOG_ERROR("Invalid index_count_threshold :: %u",
@@ -324,6 +317,16 @@ static void ValidateIndexCountThreshold(const configuration &state) {
   }
 
   LOG_INFO("%s : %u", "index_count_threshold", state.index_count_threshold);
+}
+
+static void ValidateIndexUtilityThreshold(const configuration &state) {
+  if (state.index_utility_threshold < 0 || state.index_utility_threshold > 1) {
+    LOG_ERROR("Invalid index_utility_threshold :: %.1lf",
+              state.index_utility_threshold);
+    exit(EXIT_FAILURE);
+  }
+
+  LOG_INFO("%s : %.1lf", "index_utility_threshold", state.index_utility_threshold);
 }
 
 static void ValidateWriteRatioThreshold(const configuration &state) {
@@ -453,11 +456,12 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
       case 'w':
         state.write_ratio = atof(optarg);
         break;
+
       case 'x':
-        state.index_utility_threshold = atof(optarg);
+        state.index_count_threshold = atoi(optarg);
         break;
       case 'y':
-        state.index_count_threshold = atoi(optarg);
+        state.index_utility_threshold = atof(optarg);
         break;
       case 'z':
         state.write_ratio_threshold = atof(optarg);
@@ -481,8 +485,8 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   ValidateSelectivity(state);
   ValidateProjectivity(state);
   ValidateLayout(state);
-  ValidateIndexUtilityThreshold(state);
   ValidateIndexCountThreshold(state);
+  ValidateIndexUtilityThreshold(state);
   ValidateWriteRatioThreshold(state);
 
   // Setup learning rate based on index usage type.
