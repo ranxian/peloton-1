@@ -24,48 +24,53 @@ void Usage() {
   LOG_INFO(
       "\n"
       "Command line options : sdbench <options>\n"
-      "   -h --help                          :  Print help message\n"
-      "   -f --index_usage_type              :  Types of indexes used\n"
-      "   -u --write_complexity_type         :  Complexity of write\n"
-      "   -c --query_complexity_type         :  Complexity of query\n"
-      "   -k --scale-factor                  :  # of tile groups\n"
       "   -a --attribute_count               :  # of attributes\n"
-      "   -w --write_ratio                   :  Fraction of writes\n"
-      "   -g --tuples_per_tg                 :  # of tuples per tilegroup\n"
-      "   -t --phase_length                  :  Length of a phase\n"
-      "   -q --total_ops                     :  # of operations\n"
-      "   -s --selectivity                   :  Selectivity\n"
-      "   -p --projectivity                  :  Projectivity\n"
-      "   -l --layout                        :  Layout\n"
+      "   -b --convergence_query_threshold   :  # of queries for convergence\n"
+      "   -c --query_complexity_type         :  Complexity of query\n"
+      "   -d --variability_threshold         :  Variability threshold\n"
       "   -e --sample_count_threshold        :  Sample count threshold\n"
+      "   -f --index_usage_type              :  Types of indexes used\n"
+      "   -g --tuples_per_tg                 :  # of tuples per tilegroup\n"
+      "   -h --help                          :  Print help message\n"
+      "   -k --scale-factor                  :  # of tile groups\n"
+      "   -l --layout                        :  Layout\n"
       "   -m --max_tile_groups_indexed       :  Max tile groups indexed\n"
       "   -o --convergence                   :  Convergence\n"
-      "   -b --convergence_query_threshold   :  # of queries for convergence\n"
-      "   -d --variability_threshold         :  Variability threshold\n"
-      "   -v --verbose                       :  Output verbosity\n");
+      "   -p --projectivity                  :  Projectivity\n"
+      "   -q --total_ops                     :  # of operations\n"
+      "   -s --selectivity                   :  Selectivity\n"
+      "   -t --phase_length                  :  Length of a phase\n"
+      "   -u --write_complexity_type         :  Complexity of write\n"
+      "   -v --verbose                       :  Output verbosity\n"
+      "   -w --write_ratio                   :  Fraction of writes\n"
+      "   -x --index_utility_threshold       :  Index utility threshold\n"
+      "   -y --index_count_threshold         :  Index count threshold\n"
+      "   -z --write_ratio_threshold         :  Write ratio threshold\n"
+  );
   exit(EXIT_FAILURE);
 }
 
 static struct option opts[] = {
-    {"index_usage_type", optional_argument, NULL, 'f'},
-    {"query_complexity_type", optional_argument, NULL, 'c'},
-    {"write_complexity_type", optional_argument, NULL, 'u'},
-    {"scale-factor", optional_argument, NULL, 'k'},
     {"attribute_count", optional_argument, NULL, 'a'},
-    {"write_ratio", optional_argument, NULL, 'w'},
-    {"tuples_per_tg", optional_argument, NULL, 'g'},
-    {"phase_length", optional_argument, NULL, 't'},
-    {"total_ops", optional_argument, NULL, 'q'},
-    {"selectivity", optional_argument, NULL, 's'},
-    {"projectivity", optional_argument, NULL, 'p'},
-    {"layout", optional_argument, NULL, 'l'},
+    {"convergence_query_threshold", optional_argument, NULL, 'b'},
+    {"query_complexity_type", optional_argument, NULL, 'c'},
+    {"variability_threshold", optional_argument, NULL, 'd'},
     {"sample_count_threshold", optional_argument, NULL, 'e'},
+    {"index_usage_type", optional_argument, NULL, 'f'},
+    {"tuples_per_tg", optional_argument, NULL, 'g'},
+    {"scale-factor", optional_argument, NULL, 'k'},
+    {"layout", optional_argument, NULL, 'l'},
     {"max_tile_groups_indexed", optional_argument, NULL, 'm'},
     {"convergence", optional_argument, NULL, 'o'},
-    {"convergence_query_threshold", optional_argument, NULL, 'b'},
-    {"variability_threshold", optional_argument, NULL, 'd'},
+    {"projectivity", optional_argument, NULL, 'p'},
+    {"total_ops", optional_argument, NULL, 'q'},
+    {"selectivity", optional_argument, NULL, 's'},
+    {"phase_length", optional_argument, NULL, 't'},
+    {"write_complexity_type", optional_argument, NULL, 'u'},
     {"verbose", optional_argument, NULL, 'v'},
-    {NULL, 0, NULL, 0}};
+    {"write_ratio", optional_argument, NULL, 'w'},
+    {NULL, 0, NULL, 0}
+};
 
 void GenerateSequence(oid_t column_count) {
   // Reset sequence
@@ -301,7 +306,40 @@ static void ValidateVariabilityThreshold(const configuration &state) {
   LOG_INFO("%s : %u", "variability_threshold", state.variability_threshold);
 }
 
+static void ValidateIndexUtilityThreshold(const configuration &state) {
+  if (state.index_utility_threshold < 0 || state.index_utility_threshold > 1) {
+    LOG_ERROR("Invalid index_utility_threshold :: %.1lf",
+              state.index_utility_threshold);
+    exit(EXIT_FAILURE);
+  }
+
+  LOG_INFO("%s : %.1lf", "index_utility_threshold", state.index_utility_threshold);
+}
+
+static void ValidateIndexCountThreshold(const configuration &state) {
+  if (state.index_count_threshold == 0) {
+    LOG_ERROR("Invalid index_count_threshold :: %u",
+              state.index_count_threshold);
+    exit(EXIT_FAILURE);
+  }
+
+  LOG_INFO("%s : %u", "index_count_threshold", state.index_count_threshold);
+}
+
+static void ValidateWriteRatioThreshold(const configuration &state) {
+  if (state.write_ratio_threshold < 0 || state.write_ratio_threshold > 1) {
+    LOG_ERROR("Invalid write_ratio_threshold :: %.1lf",
+              state.write_ratio_threshold);
+    exit(EXIT_FAILURE);
+  }
+
+  LOG_INFO("%s : %.1lf", "write_ratio_threshold", state.write_ratio_threshold);
+}
+
 void ParseArguments(int argc, char *argv[], configuration &state) {
+
+  state.verbose = false;
+
   // Default Values
   state.index_usage_type = INDEX_USAGE_TYPE_AGGRESSIVE;
   state.query_complexity_type = QUERY_COMPLEXITY_TYPE_SIMPLE;
@@ -340,75 +378,89 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   // Variability parameters
   state.variability_threshold = 25;
 
-  state.verbose = false;
+  // Drop parameters
+  state.index_utility_threshold = 0.2;
+  state.index_count_threshold = 10;
+  state.write_ratio_threshold = 0.8;
 
   // Parse args
   while (1) {
     int idx = 0;
-    int c = getopt_long(argc, argv, "hf:c:k:a:w:g:y:q:t:s:p:l:v:e:m:o:b:d:u:",
+    int c = getopt_long(argc, argv, "a:b:c:d:e:f:g:hk:l:m:o:p:q:s:t:u:v:w:x:y:z:",
                         opts, &idx);
 
     if (c == -1) break;
 
     switch (c) {
-      // AVAILABLE FLAGS: ijlnrxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
-      case 'f':
-        state.index_usage_type = (IndexUsageType)atoi(optarg);
-        break;
-      case 'u':
-        state.write_complexity_type = (WriteComplexityType)atoi(optarg);
-        break;
-      case 'c':
-        state.query_complexity_type = (QueryComplexityType)atoi(optarg);
-        break;
-      case 'k':
-        state.scale_factor = atoi(optarg);
-        break;
+      // AVAILABLE FLAGS: ijnrABCDEFGHIJKLMNOPQRSTUVWXYZ
       case 'a':
         state.attribute_count = atoi(optarg);
-        break;
-      case 'w':
-        state.write_ratio = atof(optarg);
-        break;
-      case 'g':
-        state.tuples_per_tilegroup = atoi(optarg);
-        break;
-      case 'q':
-        state.total_ops = atol(optarg);
-        break;
-      case 't':
-        state.phase_length = atol(optarg);
-        break;
-      case 's':
-        state.selectivity = atof(optarg);
-        break;
-      case 'p':
-        state.projectivity = atof(optarg);
-        break;
-      case 'l':
-        state.layout_mode = (LayoutType)atoi(optarg);
-        break;
-      case 'e':
-        state.sample_count_threshold = atoi(optarg);
-        break;
-      case 'm':
-        state.max_tile_groups_indexed = atoi(optarg);
-        break;
-      case 'v':
-        state.verbose = atoi(optarg);
-        break;
-      case 'o':
-        state.convergence = atoi(optarg);
         break;
       case 'b':
         state.convergence_query_threshold = atoi(optarg);
         break;
+      case 'c':
+        state.query_complexity_type = (QueryComplexityType)atoi(optarg);
+        break;
       case 'd':
         state.variability_threshold = atoi(optarg);
         break;
-
+      case 'e':
+        state.sample_count_threshold = atoi(optarg);
+        break;
+      case 'f':
+        state.index_usage_type = (IndexUsageType)atoi(optarg);
+        break;
+      case 'g':
+        state.tuples_per_tilegroup = atoi(optarg);
+        break;
       case 'h':
         Usage();
+        break;
+
+      case 'k':
+        state.scale_factor = atoi(optarg);
+        break;
+      case 'l':
+        state.layout_mode = (LayoutType)atoi(optarg);
+        break;
+      case 'm':
+        state.max_tile_groups_indexed = atoi(optarg);
+        break;
+
+      case 'o':
+        state.convergence = atoi(optarg);
+        break;
+      case 'p':
+        state.projectivity = atof(optarg);
+        break;
+      case 'q':
+        state.total_ops = atol(optarg);
+        break;
+
+      case 's':
+        state.selectivity = atof(optarg);
+        break;
+      case 't':
+        state.phase_length = atol(optarg);
+        break;
+      case 'u':
+        state.write_complexity_type = (WriteComplexityType)atoi(optarg);
+        break;
+      case 'v':
+        state.verbose = atoi(optarg);
+        break;
+      case 'w':
+        state.write_ratio = atof(optarg);
+        break;
+      case 'x':
+        state.index_utility_threshold = atof(optarg);
+        break;
+      case 'y':
+        state.index_count_threshold = atoi(optarg);
+        break;
+      case 'z':
+        state.write_ratio_threshold = atof(optarg);
         break;
 
       default:
@@ -429,10 +481,13 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   ValidateSelectivity(state);
   ValidateProjectivity(state);
   ValidateLayout(state);
+  ValidateIndexUtilityThreshold(state);
+  ValidateIndexCountThreshold(state);
+  ValidateWriteRatioThreshold(state);
 
-  // Setup learning rate based on index usage type. With a smaller
-  // sample_count_threashold, the index tuner will be more aggressive to adapt a
-  // new index.
+  // Setup learning rate based on index usage type.
+  // With a smaller sample_count_threashold, the index tuner will
+  // be more aggressive to adapt a new index.
   if (state.index_usage_type == INDEX_USAGE_TYPE_CONSERVATIVE) {
     state.sample_count_threshold = 50;
   } else if (state.index_usage_type == INDEX_USAGE_TYPE_BALANCED) {

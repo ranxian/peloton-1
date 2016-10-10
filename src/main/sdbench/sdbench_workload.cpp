@@ -1252,9 +1252,13 @@ static bool HasIndexConfigurationConverged() {
 }
 
 void RunSDBenchTest() {
+
   // Setup index tuner
   index_tuner.SetSampleCountThreshold(state.sample_count_threshold);
   index_tuner.SetMaxTileGroupsIndexed(state.max_tile_groups_indexed);
+  index_tuner.SetIndexUtilityThreshold(state.index_utility_threshold);
+  index_tuner.SetIndexCountThreshold(state.index_count_threshold);
+  index_tuner.SetWriteRatioThreshold(state.write_ratio_threshold);
 
   std::thread index_builder;
 
