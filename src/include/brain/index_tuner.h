@@ -146,13 +146,13 @@ class IndexTuner {
   //===--------------------------------------------------------------------===//
 
   // index utility threshold below which it will be dropped
-  double index_utility_threshold = 0.2;
+  double index_utility_threshold = 0.25;
 
   // maximum # of indexes per table
   oid_t index_count_threshold = 10;
 
   // write intensive workload ratio threshold
-  double write_ratio_threshold = 0.8;
+  double write_ratio_threshold = 0.75;
 
 };
 

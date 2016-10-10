@@ -379,9 +379,9 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   state.variability_threshold = 25;
 
   // Drop parameters
-  state.index_utility_threshold = 0.2;
+  state.index_utility_threshold = 0.25;
   state.index_count_threshold = 10;
-  state.write_ratio_threshold = 0.8;
+  state.write_ratio_threshold = 0.75;
 
   // Parse args
   while (1) {
