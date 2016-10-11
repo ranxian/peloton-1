@@ -1294,8 +1294,10 @@ void RunSDBenchTest() {
 
   // Start index tuner
   if(state.index_usage_type != INDEX_USAGE_TYPE_NEVER){
-    index_tuner.Start();
     index_tuner.AddTable(sdbench_table.get());
+
+    // Start after adding tables
+    index_tuner.Start();
   }
 
   for (oid_t phase_itr = 0; phase_itr < phase_count; phase_itr++) {
