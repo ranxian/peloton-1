@@ -264,8 +264,6 @@ static std::shared_ptr<planner::HybridScanPlan> CreateHybridScanPlan(
   return hybrid_scan_node;
 }
 
-static double GetRandomSample() { return (double)rand() / RAND_MAX; }
-
 const static std::string OUTPUT_FILE = "outputfile.summary";
 std::ofstream out(OUTPUT_FILE);
 
@@ -479,38 +477,38 @@ static void RunModerateQuery() {
 
   auto rand_sample = rand() % state.variability_threshold;
   if (rand_sample <= 5) {
-    tuple_key_attrs = {2, 5};
-    index_key_attrs = {0, 1};
+    tuple_key_attrs = {3, 8, 9};
+    index_key_attrs = {0, 1, 2};
   } else if (rand_sample <= 9) {
-    tuple_key_attrs = {2, 8};
-    index_key_attrs = {0, 1};
+    tuple_key_attrs = {4, 9, 11};
+    index_key_attrs = {0, 1, 2};
   } else if (rand_sample <= 11) {
-    tuple_key_attrs = {3, 5};
-    index_key_attrs = {0, 1};
+    tuple_key_attrs = {1, 4, 7};
+    index_key_attrs = {0, 1, 2};
   } else if (rand_sample <= 15) {
-    tuple_key_attrs = {2, 3, 8};
+    tuple_key_attrs = {2, 3, 5};
     index_key_attrs = {0, 1, 2};
   } else if (rand_sample <= 17) {
-    tuple_key_attrs = {2, 3, 5, 8};
+    tuple_key_attrs = {5, 8, 9, 10};
     index_key_attrs = {0, 1, 2, 3};
   } else if (rand_sample <= 18) {
-    tuple_key_attrs = {6, 9};
-    index_key_attrs = {0, 1};
+    tuple_key_attrs = {6, 10, 11, 12};
+    index_key_attrs = {0, 1, 2, 3};
   } else if (rand_sample <= 19) {
-    tuple_key_attrs = {6, 7};
-    index_key_attrs = {0, 1};
+    tuple_key_attrs = {7, 8, 10, 11};
+    index_key_attrs = {0, 1, 2, 3};
   } else if (rand_sample <= 20) {
-    tuple_key_attrs = {5, 8};
-    index_key_attrs = {0, 1};
+    tuple_key_attrs = {7, 8, 9, 11, 12, 13};
+    index_key_attrs = {0, 1, 2, 3, 4, 5};
   } else if (rand_sample <= 21) {
-    tuple_key_attrs = {5, 6, 7};
-    index_key_attrs = {0, 1, 2};
+    tuple_key_attrs = {4, 9, 10, 11, 12, 13};
+    index_key_attrs = {0, 1, 2, 3, 4, 5};
   } else if (rand_sample <= 23) {
-    tuple_key_attrs = {3, 4, 5, 6, 7};
-    index_key_attrs = {0, 1, 2, 3, 4};
+    tuple_key_attrs = {6, 7, 8, 9, 10, 11, 12};
+    index_key_attrs = {0, 1, 2, 3, 4, 5, 6};
   } else {
-    tuple_key_attrs = {3, 4, 5};
-    index_key_attrs = {0, 1, 2};
+    tuple_key_attrs = {1, 3, 5, 6, 7, 8, 11, 12};
+    index_key_attrs = {0, 1, 2, 3, 4, 5, 6, 7};
   }
 
   LOG_TRACE("Moderate :: %s", GetOidVectorString(tuple_key_attrs).c_str());
@@ -545,22 +543,30 @@ static void RunComplexQuery() {
   // 10 for the left table, 10 for the right table
   auto rand_sample = rand() % state.variability_threshold;
   if (rand_sample <= 5) {
-    left_table_tuple_key_attrs = {3, 4};
-    left_table_index_key_attrs = {0, 1};
-    right_table_tuple_key_attrs = {10, 11};
-    right_table_index_key_attrs = {0, 1};
-    left_table_join_column = 5;
-    right_table_join_column = 12;
-    is_join_query = true;
+    tuple_key_attrs = {3, 4, 5};
+    index_key_attrs = {0, 1, 2};
+    is_aggregate_query = true;
   } else if (rand_sample <= 9) {
-    left_table_tuple_key_attrs = {3, 5};
-    left_table_index_key_attrs = {0, 1};
-    right_table_tuple_key_attrs = {10, 12};
-    right_table_index_key_attrs = {0, 1};
-    left_table_join_column = 4;
-    right_table_join_column = 11;
-    is_join_query = true;
+    tuple_key_attrs = {3, 4};
+    index_key_attrs = {0, 1};
+    is_aggregate_query = true;
   } else if (rand_sample <= 11) {
+    tuple_key_attrs = {6};
+    index_key_attrs = {0};
+    is_aggregate_query = true;
+  } else if (rand_sample <= 15) {
+    tuple_key_attrs = {5, 8};
+    index_key_attrs = {0, 1};
+    is_aggregate_query = true;
+  } else if (rand_sample <= 17) {
+    tuple_key_attrs = {5, 6, 7};
+    index_key_attrs = {0, 1, 2};
+    is_aggregate_query = true;
+  } else if (rand_sample <= 18) {
+    tuple_key_attrs = {3, 4, 5, 6, 7};
+    index_key_attrs = {0, 1, 2, 3, 4};
+    is_aggregate_query = true;
+  } else if (rand_sample <= 19) {
     left_table_tuple_key_attrs = {3, 4, 5};
     left_table_index_key_attrs = {0, 1, 2};
     right_table_tuple_key_attrs = {10, 11, 12};
@@ -568,7 +574,7 @@ static void RunComplexQuery() {
     left_table_join_column = 6;
     right_table_join_column = 13;
     is_join_query = true;
-  } else if (rand_sample <= 15) {
+  } else if (rand_sample <= 20) {
     left_table_tuple_key_attrs = {3};
     left_table_index_key_attrs = {0};
     right_table_tuple_key_attrs = {10};
@@ -576,7 +582,7 @@ static void RunComplexQuery() {
     left_table_join_column = 5;
     right_table_join_column = 12;
     is_join_query = true;
-  } else if (rand_sample <= 17) {
+  } else if (rand_sample <= 21) {
     left_table_tuple_key_attrs = {5, 6, 7, 8};
     left_table_index_key_attrs = {0, 1, 2, 3};
     right_table_tuple_key_attrs = {12, 13};
@@ -584,30 +590,22 @@ static void RunComplexQuery() {
     left_table_join_column = 4;
     right_table_join_column = 11;
     is_join_query = true;
-  } else if (rand_sample <= 18) {
-    tuple_key_attrs = {3, 4};
-    index_key_attrs = {0, 1};
-    is_aggregate_query = true;
-  } else if (rand_sample <= 19) {
-    tuple_key_attrs = {6};
-    index_key_attrs = {0};
-    is_aggregate_query = true;
-  } else if (rand_sample <= 20) {
-    tuple_key_attrs = {5, 8};
-    index_key_attrs = {0, 1};
-    is_aggregate_query = true;
-  } else if (rand_sample <= 21) {
-    tuple_key_attrs = {5, 6, 7};
-    index_key_attrs = {0, 1, 2};
-    is_aggregate_query = true;
   } else if (rand_sample <= 23) {
-    tuple_key_attrs = {3, 4, 5, 6, 7};
-    index_key_attrs = {0, 1, 2, 3, 4};
-    is_aggregate_query = true;
+    left_table_tuple_key_attrs = {3, 5};
+    left_table_index_key_attrs = {0, 1};
+    right_table_tuple_key_attrs = {10, 12};
+    right_table_index_key_attrs = {0, 1};
+    left_table_join_column = 4;
+    right_table_join_column = 11;
+    is_join_query = true;
   } else {
-    tuple_key_attrs = {3, 4, 5};
-    index_key_attrs = {0, 1, 2};
-    is_aggregate_query = true;
+    left_table_tuple_key_attrs = {3, 4};
+    left_table_index_key_attrs = {0, 1};
+    right_table_tuple_key_attrs = {10, 11};
+    right_table_index_key_attrs = {0, 1};
+    left_table_join_column = 5;
+    right_table_join_column = 12;
+    is_join_query = true;
   }
 
   if (is_join_query == true) {
@@ -1076,38 +1074,38 @@ static void RunComplexUpdate() {
 
   auto rand_sample = rand() % state.variability_threshold;
   if (rand_sample <= 5) {
-    tuple_key_attrs = {1, 4, 7, 8};
-    index_key_attrs = {0, 1, 2, 3};
-  } else if (rand_sample <= 9) {
-    tuple_key_attrs = {2, 3, 5, 7};
-    index_key_attrs = {0, 1, 2, 3};
-  } else if (rand_sample <= 11) {
     tuple_key_attrs = {3, 8, 9};
     index_key_attrs = {0, 1, 2};
-  } else if (rand_sample <= 15) {
+  } else if (rand_sample <= 9) {
     tuple_key_attrs = {4, 9, 11};
     index_key_attrs = {0, 1, 2};
+  } else if (rand_sample <= 11) {
+    tuple_key_attrs = {1, 4, 7};
+    index_key_attrs = {0, 1, 2};
+  } else if (rand_sample <= 15) {
+    tuple_key_attrs = {2, 3, 5};
+    index_key_attrs = {0, 1, 2};
   } else if (rand_sample <= 17) {
-    tuple_key_attrs = {5, 8};
-    index_key_attrs = {0, 1};
+    tuple_key_attrs = {5, 8, 9, 10};
+    index_key_attrs = {0, 1, 2, 3};
   } else if (rand_sample <= 18) {
-    tuple_key_attrs = {6, 10, 11};
-    index_key_attrs = {0, 1, 2};
+    tuple_key_attrs = {6, 10, 11, 12};
+    index_key_attrs = {0, 1, 2, 3};
   } else if (rand_sample <= 19) {
-    tuple_key_attrs = {7, 8, 10};
-    index_key_attrs = {0, 1, 2};
+    tuple_key_attrs = {7, 8, 10, 11};
+    index_key_attrs = {0, 1, 2, 3};
   } else if (rand_sample <= 20) {
-    tuple_key_attrs = {8, 9, 11, 12, 13};
-    index_key_attrs = {0, 1, 2, 3, 4};
+    tuple_key_attrs = {7, 8, 9, 11, 12, 13};
+    index_key_attrs = {0, 1, 2, 3, 4, 5};
   } else if (rand_sample <= 21) {
-    tuple_key_attrs = {9, 10};
-    index_key_attrs = {0, 1};
+    tuple_key_attrs = {4, 9, 10, 11, 12, 13};
+    index_key_attrs = {0, 1, 2, 3, 4, 5};
   } else if (rand_sample <= 23) {
-    tuple_key_attrs = {10, 12};
-    index_key_attrs = {0, 1};
+    tuple_key_attrs = {6, 7, 8, 9, 10, 11, 12};
+    index_key_attrs = {0, 1, 2, 3, 4, 5, 6};
   } else {
-    tuple_key_attrs = {11, 12, 14};
-    index_key_attrs = {0, 1, 2};
+    tuple_key_attrs = {1, 3, 5, 6, 7, 8, 11, 12};
+    index_key_attrs = {0, 1, 2, 3, 4, 5, 6, 7};
   }
 
   UNUSED_ATTRIBUTE std::stringstream os;
@@ -1300,8 +1298,11 @@ void RunSDBenchTest() {
     index_tuner.Start();
   }
 
+  // seed generator
+  srand(generator_seed);
+
   for (oid_t phase_itr = 0; phase_itr < phase_count; phase_itr++) {
-    double rand_sample = GetRandomSample();
+    double rand_sample = (double) rand() / RAND_MAX;
 
     // Do insert
     if (rand_sample < write_ratio) {

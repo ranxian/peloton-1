@@ -53,6 +53,8 @@ enum WriteComplexityType {
 
 extern int orig_scale_factor;
 
+static const int generator_seed = 23;
+
 class configuration {
  public:
   // What kind of indexes can be used ?
