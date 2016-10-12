@@ -726,10 +726,10 @@ void DataTable::AddIndex(std::shared_ptr<index::Index> index) {
   std::set<oid_t> index_columns_set(index_columns_.begin(),
                                     index_columns_.end());
 
+  indexes_columns_.push_back(index_columns_set);
+
   // Add index
   indexes_.Append(index);
-
-  indexes_columns_.push_back(index_columns_set);
 
   // Update index stats
   auto index_type = index->GetIndexType();
@@ -798,7 +798,6 @@ std::shared_ptr<index::Index> DataTable::GetIndex(const oid_t &index_offset) {
 std::set<oid_t> DataTable::GetIndexAttrs(const oid_t &index_offset) const {
   PL_ASSERT(index_offset < GetIndexCount());
 
-  auto index = indexes_.Find(index_offset);
   auto index_attrs = indexes_columns_.at(index_offset);
 
   return index_attrs;
