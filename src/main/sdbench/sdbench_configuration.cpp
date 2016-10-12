@@ -321,22 +321,22 @@ static void ValidateIndexCountThreshold(const configuration &state) {
 
 static void ValidateIndexUtilityThreshold(const configuration &state) {
   if (state.index_utility_threshold < 0 || state.index_utility_threshold > 1) {
-    LOG_ERROR("Invalid index_utility_threshold :: %.1lf",
+    LOG_ERROR("Invalid index_utility_threshold :: %.2lf",
               state.index_utility_threshold);
     exit(EXIT_FAILURE);
   }
 
-  LOG_INFO("%s : %.1lf", "index_utility_threshold", state.index_utility_threshold);
+  LOG_INFO("%s : %.2lf", "index_utility_threshold", state.index_utility_threshold);
 }
 
 static void ValidateWriteRatioThreshold(const configuration &state) {
   if (state.write_ratio_threshold < 0 || state.write_ratio_threshold > 1) {
-    LOG_ERROR("Invalid write_ratio_threshold :: %.1lf",
+    LOG_ERROR("Invalid write_ratio_threshold :: %.2lf",
               state.write_ratio_threshold);
     exit(EXIT_FAILURE);
   }
 
-  LOG_INFO("%s : %.1lf", "write_ratio_threshold", state.write_ratio_threshold);
+  LOG_INFO("%s : %.2lf", "write_ratio_threshold", state.write_ratio_threshold);
 }
 
 void ParseArguments(int argc, char *argv[], configuration &state) {
@@ -495,7 +495,7 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   if (state.index_usage_type == INDEX_USAGE_TYPE_CONSERVATIVE) {
     state.sample_count_threshold = 50;
   } else if (state.index_usage_type == INDEX_USAGE_TYPE_BALANCED) {
-    state.sample_count_threshold = 10;
+    state.sample_count_threshold = 25;
   } else if (state.index_usage_type == INDEX_USAGE_TYPE_AGGRESSIVE) {
     state.sample_count_threshold = 5;
   }

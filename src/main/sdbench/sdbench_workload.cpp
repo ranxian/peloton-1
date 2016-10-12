@@ -1218,6 +1218,10 @@ static bool HasIndexConfigurationConverged() {
   for (oid_t index_itr = 0; index_itr < index_count; index_itr++) {
     // Get index
     auto index = sdbench_table->GetIndex(index_itr);
+    if(index == nullptr){
+      continue;
+    }
+
     auto indexed_tile_group_offset = index->GetIndexedTileGroupOffset();
 
     // Get percentage completion
