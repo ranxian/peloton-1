@@ -1339,7 +1339,7 @@ void RunSDBenchTest() {
   srand(generator_seed);
 
   for (oid_t phase_itr = 0; phase_itr < phase_count; phase_itr++) {
-    double rand_sample = (double) rand() / RAND_MAX;
+    double rand_sample = (double)rand() / RAND_MAX;
 
     // Do insert
     if (rand_sample < write_ratio) {

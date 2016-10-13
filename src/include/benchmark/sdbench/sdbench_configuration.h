@@ -53,7 +53,7 @@ enum WriteComplexityType {
 
 extern int orig_scale_factor;
 
-static const int generator_seed = 23;
+static const int generator_seed = 50;
 
 class configuration {
  public:
