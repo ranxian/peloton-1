@@ -240,6 +240,10 @@ ItemPointer DataTable::InsertTuple(const storage::Tuple *tuple) {
 bool DataTable::DeleteInIndex(oid_t index_offset, const AbstractTuple *tuple,
                               ItemPointer location) {
   auto index = GetIndex(index_offset);
+  if(index == nullptr){
+    return true;
+  }
+
   auto index_schema = index->GetKeySchema();
   auto indexed_columns = index_schema->GetIndexedColumns();
   std::unique_ptr<storage::Tuple> key(new storage::Tuple(index_schema, true));
@@ -282,6 +286,10 @@ bool DataTable::InsertInIndex(oid_t index_offset, const storage::Tuple *tuple,
   // (A) Check existence for primary/unique indexes
   // FIXME Since this is NOT protected by a lock, concurrent insert may happen.
   auto index = GetIndex(index_offset);
+  if(index == nullptr){
+    return true;
+  }
+
   auto index_schema = index->GetKeySchema();
   auto indexed_columns = index_schema->GetIndexedColumns();
   std::unique_ptr<storage::Tuple> key(new storage::Tuple(index_schema, true));
@@ -337,6 +345,10 @@ bool DataTable::InsertInSecondaryIndexes(const storage::Tuple *tuple,
   // FIXME Since this is NOT protected by a lock, concurrent insert may happen.
   for (int index_itr = index_count - 1; index_itr >= 0; --index_itr) {
     auto index = GetIndex(index_itr);
+    if(index == nullptr){
+      continue;
+    }
+
     auto index_schema = index->GetKeySchema();
     auto indexed_columns = index_schema->GetIndexedColumns();
     std::unique_ptr<storage::Tuple> key(new storage::Tuple(index_schema, true));
