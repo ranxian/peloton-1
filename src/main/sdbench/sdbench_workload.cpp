@@ -111,9 +111,9 @@ static int GetLowerBound() {
   return lower_bound;
 }
 
-static int GetUpperBound(double selectivity) {
+static int GetUpperBound() {
   int tuple_count = state.scale_factor * state.tuples_per_tilegroup;
-  int selected_tuple_count = selectivity * tuple_count;
+  int selected_tuple_count = state.selectivity * tuple_count;
   int predicate_offset = 0.1 * tuple_count;
 
   int upper_bound = predicate_offset + selected_tuple_count;
@@ -148,9 +148,9 @@ static expression::AbstractExpression *CreateSimpleScanPredicate(
  * LOWER_BOUND and UPPER_BOUND are determined by the selectivity config.
  */
 static expression::AbstractExpression *CreateScanPredicate(
-    std::vector<oid_t> key_attrs, double selectivity) {
+    std::vector<oid_t> key_attrs) {
   const int tuple_start_offset = GetLowerBound();
-  const int tuple_end_offset = GetUpperBound(selectivity);
+  const int tuple_end_offset = GetUpperBound();
 
   LOG_TRACE("Lower bound : %d", tuple_start_offset);
   LOG_TRACE("Upper bound : %d", tuple_end_offset);
@@ -188,10 +188,9 @@ static expression::AbstractExpression *CreateScanPredicate(
 static void CreateIndexScanPredicate(std::vector<oid_t> key_attrs,
                                      std::vector<oid_t> &key_column_ids,
                                      std::vector<ExpressionType> &expr_types,
-                                     std::vector<Value> &values,
-                                     double selectivity) {
+                                     std::vector<Value> &values) {
   const int tuple_start_offset = GetLowerBound();
-  const int tuple_end_offset = GetUpperBound(selectivity);
+  const int tuple_end_offset = GetUpperBound();
 
   // Go over all key_attrs
   for (auto key_attr : key_attrs) {
@@ -229,10 +228,9 @@ static inline std::string GetOidVectorString(const std::vector<oid_t> &oids) {
 static std::shared_ptr<planner::HybridScanPlan> CreateHybridScanPlan(
     const std::vector<oid_t> &tuple_key_attrs,
     const std::vector<oid_t> &index_key_attrs,
-    const std::vector<oid_t> &column_ids,
-    double selectivity) {
+    const std::vector<oid_t> &column_ids) {
   // Create and set up seq scan executor
-  auto predicate = CreateScanPredicate(tuple_key_attrs, selectivity);
+  auto predicate = CreateScanPredicate(tuple_key_attrs);
 
   planner::IndexScanPlan::IndexScanDesc index_scan_desc;
 
@@ -242,8 +240,7 @@ static std::shared_ptr<planner::HybridScanPlan> CreateHybridScanPlan(
   std::vector<expression::AbstractExpression *> runtime_keys;
 
   // Create index scan predicate
-  CreateIndexScanPredicate(index_key_attrs, key_column_ids, expr_types, values,
-                           selectivity);
+  CreateIndexScanPredicate(index_key_attrs, key_column_ids, expr_types, values);
 
   // Determine hybrid scan type
   auto hybrid_scan_type = HYBRID_SCAN_TYPE_SEQUENTIAL;
@@ -696,11 +693,9 @@ static void JoinQueryHelper(
 
   // Create and set up seq scan executor
   auto left_table_scan_node = CreateHybridScanPlan(
-      left_table_tuple_key_attrs, left_table_index_key_attrs, column_ids,
-      state.selectivity);
+      left_table_tuple_key_attrs, left_table_index_key_attrs, column_ids);
   auto right_table_scan_node = CreateHybridScanPlan(
-      right_table_tuple_key_attrs, right_table_index_key_attrs, column_ids,
-      state.selectivity);
+      right_table_tuple_key_attrs, right_table_index_key_attrs, column_ids);
 
   executor::HybridScanExecutor left_table_hybrid_scan_executor(
       left_table_scan_node.get(), context.get());
@@ -819,8 +814,7 @@ static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
       new executor::ExecutorContext(txn));
 
   auto hybrid_scan_node =
-      CreateHybridScanPlan(tuple_key_attrs, index_key_attrs, column_ids,
-                           state.selectivity);
+      CreateHybridScanPlan(tuple_key_attrs, index_key_attrs, column_ids);
   executor::HybridScanExecutor hybrid_scan_executor(hybrid_scan_node.get(),
                                                     context.get());
 
@@ -965,10 +959,8 @@ static void UpdateHelper(const std::vector<oid_t> &tuple_key_attrs,
   std::unique_ptr<executor::ExecutorContext> context(
       new executor::ExecutorContext(txn));
 
-  auto write_selectivity = state.selectivity * 2;
   auto hybrid_scan_node =
-      CreateHybridScanPlan(tuple_key_attrs, index_key_attrs, column_ids,
-                           write_selectivity);
+      CreateHybridScanPlan(tuple_key_attrs, index_key_attrs, column_ids);
   executor::HybridScanExecutor hybrid_scan_executor(hybrid_scan_node.get(),
                                                     context.get());
 
@@ -1014,6 +1006,7 @@ static void UpdateHelper(const std::vector<oid_t> &tuple_key_attrs,
   planner::UpdatePlan update_node(sdbench_table.get(), std::move(project_info));
 
   executor::UpdateExecutor update_executor(&update_node, context.get());
+  update_executor.AddChild(&hybrid_scan_executor);
 
   /////////////////////////////////////////////////////////
   // EXECUTE
@@ -1021,8 +1014,6 @@ static void UpdateHelper(const std::vector<oid_t> &tuple_key_attrs,
 
   std::vector<executor::AbstractExecutor *> executors;
   executors.push_back(&update_executor);
-
-  update_executor.AddChild(&hybrid_scan_executor);
 
   /////////////////////////////////////////////////////////
   // COLLECT STATS

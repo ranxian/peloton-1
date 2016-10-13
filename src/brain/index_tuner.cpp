@@ -200,7 +200,9 @@ std::vector<sample_frequency_map_entry> GetFrequentSamples(
       sample_frequency_map[sample] += sample.metric_;
       total_metric += sample.metric_;
     } else if (sample.sample_type_ == SAMPLE_TYPE_UPDATE) {
-      // Ignore update samples
+      // Update sample count
+      sample_frequency_map[sample] += sample.metric_;
+      total_metric += sample.metric_;
     } else {
       throw Exception("Unknown sample type : " +
                       std::to_string(sample.sample_type_));
