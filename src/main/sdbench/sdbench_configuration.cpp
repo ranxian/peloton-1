@@ -493,9 +493,9 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   // With a smaller sample_count_threashold, the index tuner will
   // be more aggressive to adapt a new index.
   if (state.index_usage_type == INDEX_USAGE_TYPE_CONSERVATIVE) {
-    state.sample_count_threshold = 50;
+    state.sample_count_threshold = 200;
   } else if (state.index_usage_type == INDEX_USAGE_TYPE_BALANCED) {
-    state.sample_count_threshold = 25;
+    state.sample_count_threshold = 50;
   } else if (state.index_usage_type == INDEX_USAGE_TYPE_AGGRESSIVE) {
     state.sample_count_threshold = 5;
   }
