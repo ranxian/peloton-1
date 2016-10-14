@@ -715,6 +715,12 @@ const std::string DataTable::GetInfo() const {
 //===--------------------------------------------------------------------===//
 
 size_t DataTable::GetIndexCount() const {
+  auto index_count = indexes_.GetSize();
+  return index_count;
+  return index_count;
+}
+
+size_t DataTable::GetValidIndexCount() const {
 
   std::shared_ptr<index::Index> index;
   auto index_count = indexes_.GetSize();
@@ -789,8 +795,6 @@ void DataTable::DropIndexWithOid(const oid_t &index_oid) {
   indexes_.Update(index_itr, nullptr);
 
   // Index attrs won't be dropped
-
-  LOG_TRACE("Dropped index with oid %u", index_oid);
 }
 
 void DataTable::DropIndexes() {

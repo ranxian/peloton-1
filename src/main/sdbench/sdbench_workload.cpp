@@ -1023,7 +1023,7 @@ static void UpdateHelper(const std::vector<oid_t> &tuple_key_attrs,
   auto selectivity = state.selectivity;
 
   ExecuteTest(executors,
-              brain::SAMPLE_TYPE_UPDATE,
+              brain::SAMPLE_TYPE_ACCESS,
               {index_columns_accessed},
               selectivity);
 
