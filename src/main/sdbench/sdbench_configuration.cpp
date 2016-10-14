@@ -503,20 +503,6 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   // Setup max tile groups indexed based on scale factor
   state.max_tile_groups_indexed = state.scale_factor / 10;
 
-  // Set variability based on phase length
-  if (state.phase_length <= 50){
-    state.variability_threshold = 25;
-  }
-  else if (state.phase_length <= 100){
-    state.variability_threshold = 20;
-  }
-  else if (state.phase_length <= 250){
-    state.variability_threshold = 15;
-  }
-  else {
-    state.variability_threshold = 5;
-  }
-
   ValidateSampleCountThreshold(state);
   ValidateMaxTileGroupsIndexed(state);
   ValidateConvergence(state);
