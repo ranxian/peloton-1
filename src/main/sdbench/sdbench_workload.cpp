@@ -225,7 +225,7 @@ static inline std::string GetOidVectorString(const std::vector<oid_t> &oids) {
  * @param index_key_attrs The columns in the *index key tuple* which the index
  * scan predicate is on. It should match the corresponding columns in
  * \b tuple_key_columns.
- * @param column_ids Column ids to added to the result tile after scan.
+ * @param column_ids Column ids to be added to the result tile after scan.
  * @return A hybrid scan executor based on the key columns.
  */
 static std::shared_ptr<planner::HybridScanPlan> CreateHybridScanPlan(
@@ -307,13 +307,11 @@ UNUSED_ATTRIBUTE static void WriteOutput(double duration) {
 
 /**
  * @brief Map the accsessed columns to a access bitmap.
- * @details We should use the output of this method to construct a Sample
- * instead of passing in the accessed columns directly!!
- *
+ * @details We should use the output of this method to construct a Sample for
+ * layout tuning instead of passing in the accessed columns directly!!
  */
-template <typename T>
 static std::vector<double> GetColumnsAccessed(
-    const std::vector<T> &column_ids) {
+    const std::vector<oid_t> &column_ids) {
   std::vector<double> columns_accessed;
   std::map<oid_t, oid_t> columns_accessed_map;
 
@@ -333,9 +331,20 @@ static std::vector<double> GetColumnsAccessed(
   return columns_accessed;
 }
 
+/**
+ * @brief Execute a set of executors and update access information.
+ *
+ * @param executors Executors to be executed.
+ * @param index_columns_accessed Columns that are accessed by index scan, used
+ * fpr index tuning.
+ * @param tuple_columns_accessed Columns of the tuples that are accessed, used
+ * for layout tuning.
+ * @param selectivity The selectivity of the operation.
+ */
 static void ExecuteTest(std::vector<executor::AbstractExecutor *> &executors,
                         brain::SampleType sample_type,
-                        std::vector<std::vector<double>> columns_accessed,
+                        std::vector<std::vector<double>> index_columns_accessed,
+                        std::vector<std::vector<oid_t>> tuple_columns_accessed,
                         double selectivity) {
   Timer<> timer;
 
@@ -373,17 +382,20 @@ static void ExecuteTest(std::vector<executor::AbstractExecutor *> &executors,
 
   WriteOutput(duration);
 
-  // Construct sample
-  for (auto &columns : columns_accessed) {
-    brain::Sample index_access_sample(
-        columns, duration / columns_accessed.size(), sample_type, selectivity);
-    // Record index sample
+  // Record index sample
+  for (auto &index_columns : index_columns_accessed) {
+    brain::Sample index_access_sample(index_columns,
+                                      duration / index_columns_accessed.size(),
+                                      sample_type, selectivity);
     sdbench_table->RecordIndexSample(index_access_sample);
+  }
+
+  // Record layout sample
+  for (auto &tuple_columns : tuple_columns_accessed) {
     // Record layout sample
-    brain::Sample access_bitmap(GetColumnsAccessed<double>(columns),
-                                duration / columns_accessed.size(), sample_type,
-                                selectivity);
-    sdbench_table->RecordLayoutSample(access_bitmap);
+    brain::Sample tuple_access_bitmap(GetColumnsAccessed(tuple_columns),
+                                      duration / tuple_columns_accessed.size());
+    sdbench_table->RecordLayoutSample(tuple_access_bitmap);
   }
 }
 
@@ -804,11 +816,18 @@ static void JoinQueryHelper(
   std::vector<double> right_table_index_columns_accessed(
       right_table_tuple_key_attrs.begin(), right_table_tuple_key_attrs.end());
 
+  // Prepare tuple columns accessed
+  auto left_table_tuple_columns_accessed = left_table_tuple_key_attrs;
+  auto right_table_tuple_columns_accessed = right_table_tuple_key_attrs;
+  left_table_tuple_columns_accessed.push_back(left_table_join_column);
+  right_table_tuple_columns_accessed.push_back(right_table_join_column);
+
   auto selectivity = state.selectivity;
 
   ExecuteTest(
       executors, brain::SAMPLE_TYPE_ACCESS,
       {left_table_index_columns_accessed, right_table_index_columns_accessed},
+      {left_table_tuple_columns_accessed, right_table_tuple_columns_accessed},
       selectivity);
 
   txn_manager.CommitTransaction();
@@ -951,8 +970,13 @@ static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
                                              tuple_key_attrs.end());
   auto selectivity = state.selectivity;
 
+  auto tuple_columns_accessed = tuple_key_attrs;
+  for (auto column_id : column_ids) {
+    tuple_columns_accessed.push_back(column_id);
+  }
+
   ExecuteTest(executors, brain::SAMPLE_TYPE_ACCESS, {index_columns_accessed},
-              selectivity);
+              {tuple_columns_accessed}, selectivity);
 
   txn_manager.CommitTransaction();
 }
@@ -1050,8 +1074,13 @@ static void UpdateHelper(const std::vector<oid_t> &tuple_key_attrs,
                                              tuple_key_attrs.end());
   auto selectivity = state.selectivity;
 
+  auto tuple_columns_accessed = tuple_key_attrs;
+  for (oid_t update_attr : update_attrs) {
+    tuple_columns_accessed.push_back(update_attr);
+  }
+
   ExecuteTest(executors, brain::SAMPLE_TYPE_UPDATE, {index_columns_accessed},
-              selectivity);
+              {tuple_columns_accessed}, selectivity);
 
   txn_manager.CommitTransaction();
 }
