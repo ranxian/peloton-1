@@ -101,6 +101,9 @@ std::vector<oid_t> column_counts = {50, 500};
 // Index tuner
 brain::IndexTuner &index_tuner = brain::IndexTuner::GetInstance();
 
+// Layout tuner
+brain::LayoutTuner &layout_tuner = brain::LayoutTuner::GetInstance();
+
 static int GetLowerBound() {
   int tuple_count = state.scale_factor * state.tuples_per_tilegroup;
   int predicate_offset = 0.1 * tuple_count;
@@ -302,9 +305,37 @@ UNUSED_ATTRIBUTE static void WriteOutput(double duration) {
   out.flush();
 }
 
+/**
+ * @brief Map the accsessed columns to a access bitmap.
+ * @details We should use the output of this method to construct a Sample
+ * instead of passing in the accessed columns directly!!
+ *
+ */
+template <typename T>
+static std::vector<double> GetColumnsAccessed(
+    const std::vector<T> &column_ids) {
+  std::vector<double> columns_accessed;
+  std::map<oid_t, oid_t> columns_accessed_map;
+
+  // Init map
+  for (auto col : column_ids) columns_accessed_map[(int)col] = 1;
+
+  for (int column_itr = 0; column_itr < state.attribute_count + 1;
+       column_itr++) {
+    auto location = columns_accessed_map.find(column_itr);
+    auto end = columns_accessed_map.end();
+    if (location != end)
+      columns_accessed.push_back(1);
+    else
+      columns_accessed.push_back(0);
+  }
+
+  return columns_accessed;
+}
+
 static void ExecuteTest(std::vector<executor::AbstractExecutor *> &executors,
                         brain::SampleType sample_type,
-                        std::vector<std::vector<double>> index_columns_accessed,
+                        std::vector<std::vector<double>> columns_accessed,
                         double selectivity) {
   Timer<> timer;
 
@@ -343,12 +374,16 @@ static void ExecuteTest(std::vector<executor::AbstractExecutor *> &executors,
   WriteOutput(duration);
 
   // Construct sample
-  for (auto &index_columns : index_columns_accessed) {
-    brain::Sample index_sample(index_columns,
-                               duration / index_columns_accessed.size(),
-                               sample_type, selectivity);
-    // Record sample
-    sdbench_table->RecordIndexSample(index_sample);
+  for (auto &columns : columns_accessed) {
+    brain::Sample index_access_sample(
+        columns, duration / columns_accessed.size(), sample_type, selectivity);
+    // Record index sample
+    sdbench_table->RecordIndexSample(index_access_sample);
+    // Record layout sample
+    brain::Sample access_bitmap(GetColumnsAccessed<double>(columns),
+                                duration / columns_accessed.size(), sample_type,
+                                selectivity);
+    sdbench_table->RecordLayoutSample(access_bitmap);
   }
 }
 
@@ -455,13 +490,6 @@ static void RunSimpleQuery() {
     tuple_key_attrs = {11};
     index_key_attrs = {0};
   }
-
-  UNUSED_ATTRIBUTE std::stringstream os;
-  os << "Simple :: ";
-  for (auto tuple_key_attr : tuple_key_attrs) {
-    os << tuple_key_attr << " ";
-  }
-  LOG_TRACE("%s", os.str().c_str());
 
   // PHASE LENGTH
   for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
@@ -788,8 +816,11 @@ static void JoinQueryHelper(
 
 static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
                                  const std::vector<oid_t> &index_key_attrs) {
-  LOG_TRACE("Run aggregate query on %s ",
-            GetOidVectorString(tuple_key_attrs).c_str());
+  if (state.verbose) {
+    LOG_INFO("Run aggregate query on %s ",
+             GetOidVectorString(tuple_key_attrs).c_str());
+  }
+
   const bool is_inlined = true;
   auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
 
@@ -1280,12 +1311,10 @@ void RunSDBenchTest() {
 
   std::thread index_builder;
 
-  peloton_layout_mode = state.layout_mode;
-
   // Generate sequence
   GenerateSequence(state.attribute_count);
 
-  CreateAndLoadTable((LayoutType)peloton_layout_mode);
+  CreateAndLoadTable((LayoutType)state.layout_mode);
 
   double write_ratio = state.write_ratio;
   double phase_count = state.total_ops / state.phase_length;
@@ -1318,6 +1347,14 @@ void RunSDBenchTest() {
     index_tuner.Start();
   }
 
+  // Start layout tuner
+  if (state.layout_mode == LAYOUT_TYPE_HYBRID) {
+    layout_tuner.AddTable(sdbench_table.get());
+
+    // Start layout tuner
+    layout_tuner.Start();
+  }
+
   // seed generator
   srand(generator_seed);
 
@@ -1346,6 +1383,11 @@ void RunSDBenchTest() {
   if (state.index_usage_type != INDEX_USAGE_TYPE_NEVER) {
     index_tuner.Stop();
     index_tuner.ClearTables();
+  }
+
+  if (state.layout_mode == LAYOUT_TYPE_HYBRID) {
+    layout_tuner.Stop();
+    layout_tuner.ClearTables();
   }
 
   // Drop Indexes

@@ -10,7 +10,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "executor/materialization_executor.h"
 
 #include <memory>
@@ -18,12 +17,12 @@
 
 #include "common/logger.h"
 #include "common/macros.h"
-#include "planner/materialization_plan.h"
 #include "executor/logical_tile.h"
 #include "executor/logical_tile_factory.h"
-#include "storage/tuple.h"
+#include "planner/materialization_plan.h"
 #include "storage/data_table.h"
 #include "storage/tile.h"
+#include "storage/tuple.h"
 
 namespace peloton {
 namespace executor {
@@ -48,7 +47,7 @@ void MaterializeColumnAtATime(
  */
 MaterializationExecutor::MaterializationExecutor(
     const planner::AbstractPlan *node, ExecutorContext *executor_context)
-: AbstractExecutor(node, executor_context) {}
+    : AbstractExecutor(node, executor_context) {}
 
 /**
  * @brief Nothing to init at the moment.
@@ -74,8 +73,8 @@ bool MaterializationExecutor::DInit() {
 void MaterializationExecutor::GenerateTileToColMap(
     const std::unordered_map<oid_t, oid_t> &old_to_new_cols,
     LogicalTile *source_tile,
-    std::unordered_map<storage::Tile *, std::vector<oid_t>> &
-    cols_in_physical_tile) {
+    std::unordered_map<storage::Tile *, std::vector<oid_t>>
+        &cols_in_physical_tile) {
   for (const auto &kv : old_to_new_cols) {
     oid_t col = kv.first;
 
@@ -101,7 +100,8 @@ void MaterializationExecutor::MaterializeByTiles(
     storage::Tile *dest_tile) {
   bool row_wise_materialization = true;
 
-  if (peloton_layout_mode == LAYOUT_TYPE_COLUMN) row_wise_materialization = false;
+  if (peloton_layout_mode == LAYOUT_TYPE_COLUMN)
+    row_wise_materialization = false;
 
   // TODO: Make this a parameter
   auto dest_tile_column_count = dest_tile->GetColumnCount();
@@ -374,7 +374,7 @@ bool MaterializationExecutor::DExecute() {
     physify_flag = node.GetPhysifyFlag();
 
     // Can't physify tile if we don't get a schema
-    if(node.GetSchema() == nullptr){
+    if (node.GetSchema() == nullptr) {
       physify_flag = false;
     }
   }
