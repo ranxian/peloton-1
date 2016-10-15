@@ -779,6 +779,7 @@ static void JoinQueryHelper(
   /////////////////////////////////////////////////////////
 
   // Create and set up materialization executor
+  // FIXME: this will always retreive all columns, projectivity is ignored
   std::vector<catalog::Column> output_columns;
   std::unordered_map<oid_t, oid_t> old_to_new_cols;
   oid_t join_column_count = column_count * 2;

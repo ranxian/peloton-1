@@ -84,7 +84,12 @@ class LayoutTuner {
   //===--------------------------------------------------------------------===//
 
   // Layout similarity threshold
-  double theta = 0.3;
+  // NOTE:
+  // This could be very sensitive, the measurement of schema difference in
+  // datatable is divided by column_count, so could be very small. Theta should
+  // also not be set to zero, otherwise it will always trigger
+  // DataTable::TransformTileGroup, even if the schema is the same.
+  double theta = 0.0001;
 
   // Sleeping period (in us)
   oid_t sleep_duration = 100;
@@ -96,6 +101,8 @@ class LayoutTuner {
   double new_sample_weight = 0.01;
 
   // Desired layout tile count
+  // FIXME: for join query, only two tiles in the tile group is not enough,
+  // should be 3 = 2 for projected columns from two tables + 1 (other columns)
   oid_t tile_count = 2;
 };
 
