@@ -310,11 +310,12 @@ void IndexTuner::DropIndexes(storage::DataTable* table) {
 
 void IndexTuner::AddIndexes(storage::DataTable* table,
                             const std::vector<std::vector<double>>& suggested_indices) {
+  oid_t valid_index_count = table->GetValidIndexCount();
   oid_t index_count = table->GetIndexCount();
   size_t constructed_index_itr = 0;
 
   // Check if we have constructed too many indexess
-  if(index_count > index_count_threshold){
+  if(valid_index_count > index_count_threshold){
     LOG_TRACE("Constructed too many indexes");
     return;
   }
@@ -391,8 +392,9 @@ void UpdateIndexUtility(storage::DataTable* table,
 
 void PrintIndexInformation(storage::DataTable* table) {
   oid_t index_count = table->GetIndexCount();
+  oid_t valid_index_count = table->GetValidIndexCount();
   auto table_tilegroup_count = table->GetTileGroupCount();
-  LOG_INFO("Index count : %u", index_count);
+  LOG_INFO("Index count : %u", valid_index_count);
 
   for (oid_t index_itr = 0; index_itr < index_count; index_itr++) {
     // Get index
@@ -429,7 +431,7 @@ void IndexTuner::Analyze(storage::DataTable* table) {
   auto suggested_indices = GetSuggestedIndices(sample_frequency_entry_list);
 
   // Check index storage footprint
-  auto index_count = table->GetIndexCount();
+  auto valid_index_count = table->GetValidIndexCount();
 
   ////////////////////////////////////////////////
   // Drop indexes if
@@ -437,7 +439,7 @@ void IndexTuner::Analyze(storage::DataTable* table) {
   // b) write intensive workloads
   ////////////////////////////////////////////////
 
-  auto index_overflow = (index_count > index_count_threshold);
+  auto index_overflow = (valid_index_count > index_count_threshold);
   auto write_intensive_workload = (average_write_ratio > write_ratio_threshold);
 
   if (index_overflow == true || write_intensive_workload == true) {
@@ -479,7 +481,7 @@ oid_t IndexTuner::GetIndexCount() const {
 
   // Go over all tables
   for (auto table : tables) {
-    oid_t table_index_count = table->GetIndexCount();
+    oid_t table_index_count = table->GetValidIndexCount();
 
     // Update index count
     index_count += table_index_count;

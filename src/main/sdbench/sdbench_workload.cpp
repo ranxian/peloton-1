@@ -1079,7 +1079,7 @@ static void UpdateHelper(const std::vector<oid_t> &tuple_key_attrs,
     tuple_columns_accessed.push_back(update_attr);
   }
 
-  ExecuteTest(executors, brain::SAMPLE_TYPE_UPDATE, {index_columns_accessed},
+  ExecuteTest(executors, brain::SAMPLE_TYPE_ACCESS, {index_columns_accessed},
               {tuple_columns_accessed}, selectivity);
 
   txn_manager.CommitTransaction();
