@@ -375,7 +375,7 @@ static std::shared_ptr<index::Index> PickIndex(storage::DataTable *table,
 
     auto index = table->GetIndex(index_itr);
     // Check if index exists
-    if(index == nullptr){
+    if (index == nullptr) {
       continue;
     }
 
@@ -638,7 +638,7 @@ static void RunComplexQuery() {
   } else if (is_aggregate_query == true) {
     LOG_TRACE("Complex :: %s", GetOidVectorString(left_table_tuple_key_attrs +
                                                   right_table_tuple_key_attrs)
-              .c_str());
+                                   .c_str());
   } else {
     LOG_ERROR("Invalid query \n");
     return;
@@ -717,8 +717,8 @@ static void JoinQueryHelper(
                                            right_table_join_column);
 
   std::unique_ptr<expression::ComparisonExpression<expression::CmpLt>>
-  join_predicate(new expression::ComparisonExpression<expression::CmpLt>(
-      EXPRESSION_TYPE_COMPARE_LESSTHAN, left_table_attr, right_table_attr));
+      join_predicate(new expression::ComparisonExpression<expression::CmpLt>(
+          EXPRESSION_TYPE_COMPARE_LESSTHAN, left_table_attr, right_table_attr));
 
   std::unique_ptr<const planner::ProjectInfo> project_info(nullptr);
   std::shared_ptr<const catalog::Schema> schema(nullptr);
@@ -779,8 +779,7 @@ static void JoinQueryHelper(
   auto selectivity = state.selectivity;
 
   ExecuteTest(
-      executors,
-      brain::SAMPLE_TYPE_ACCESS,
+      executors, brain::SAMPLE_TYPE_ACCESS,
       {left_table_index_columns_accessed, right_table_index_columns_accessed},
       selectivity);
 
@@ -851,7 +850,7 @@ static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
         EXPRESSION_TYPE_AGGREGATE_MAX,
         expression::ExpressionUtil::TupleValueFactory(VALUE_TYPE_INTEGER, 0,
                                                       column_id),
-                                                      false);
+        false);
     agg_terms.push_back(max_column_agg);
   }
 
@@ -921,9 +920,7 @@ static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
                                              tuple_key_attrs.end());
   auto selectivity = state.selectivity;
 
-  ExecuteTest(executors,
-              brain::SAMPLE_TYPE_ACCESS,
-              {index_columns_accessed},
+  ExecuteTest(executors, brain::SAMPLE_TYPE_ACCESS, {index_columns_accessed},
               selectivity);
 
   txn_manager.CommitTransaction();
@@ -1022,9 +1019,7 @@ static void UpdateHelper(const std::vector<oid_t> &tuple_key_attrs,
                                              tuple_key_attrs.end());
   auto selectivity = state.selectivity;
 
-  ExecuteTest(executors,
-              brain::SAMPLE_TYPE_UPDATE,
-              {index_columns_accessed},
+  ExecuteTest(executors, brain::SAMPLE_TYPE_UPDATE, {index_columns_accessed},
               selectivity);
 
   txn_manager.CommitTransaction();
@@ -1086,7 +1081,6 @@ static void RunSimpleUpdate() {
   for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
     UpdateHelper(tuple_key_attrs, index_key_attrs, update_attrs);
   }
-
 }
 
 static void RunComplexUpdate() {
@@ -1143,7 +1137,6 @@ static void RunComplexUpdate() {
   for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
     UpdateHelper(tuple_key_attrs, index_key_attrs, update_attrs);
   }
-
 }
 
 /**
@@ -1217,7 +1210,7 @@ static bool HasIndexConfigurationConverged() {
   for (oid_t index_itr = 0; index_itr < index_count; index_itr++) {
     // Get index
     auto index = sdbench_table->GetIndex(index_itr);
-    if(index == nullptr){
+    if (index == nullptr) {
       continue;
     }
 
@@ -1278,7 +1271,6 @@ static bool HasIndexConfigurationConverged() {
 }
 
 void RunSDBenchTest() {
-
   // Setup index tuner
   index_tuner.SetSampleCountThreshold(state.sample_count_threshold);
   index_tuner.SetMaxTileGroupsIndexed(state.max_tile_groups_indexed);
@@ -1319,7 +1311,7 @@ void RunSDBenchTest() {
   Timer<> index_unchanged_timer;
 
   // Start index tuner
-  if(state.index_usage_type != INDEX_USAGE_TYPE_NEVER){
+  if (state.index_usage_type != INDEX_USAGE_TYPE_NEVER) {
     index_tuner.AddTable(sdbench_table.get());
 
     // Start after adding tables
@@ -1344,15 +1336,14 @@ void RunSDBenchTest() {
     // Check index convergence
     if (state.convergence == true) {
       bool converged = HasIndexConfigurationConverged();
-      if(converged == true) {
+      if (converged == true) {
         break;
       }
     }
-
   }
 
   // Stop index tuner
-  if(state.index_usage_type != INDEX_USAGE_TYPE_NEVER){
+  if (state.index_usage_type != INDEX_USAGE_TYPE_NEVER) {
     index_tuner.Stop();
     index_tuner.ClearTables();
   }
@@ -1361,7 +1352,6 @@ void RunSDBenchTest() {
   DropIndexes();
 
   // Reset
-  state.adapt_layout = false;
   query_itr = 0;
 
   LOG_INFO("Duration : %.2lf", total_duration);
