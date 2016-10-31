@@ -240,7 +240,7 @@ ItemPointer DataTable::InsertTuple(const storage::Tuple *tuple) {
 bool DataTable::DeleteInIndex(oid_t index_offset, const AbstractTuple *tuple,
                               ItemPointer location) {
   auto index = GetIndex(index_offset);
-  if(index == nullptr){
+  if (index == nullptr) {
     return true;
   }
 
@@ -286,7 +286,7 @@ bool DataTable::InsertInIndex(oid_t index_offset, const storage::Tuple *tuple,
   // (A) Check existence for primary/unique indexes
   // FIXME Since this is NOT protected by a lock, concurrent insert may happen.
   auto index = GetIndex(index_offset);
-  if(index == nullptr){
+  if (index == nullptr) {
     return true;
   }
 
@@ -345,7 +345,7 @@ bool DataTable::InsertInSecondaryIndexes(const storage::Tuple *tuple,
   // FIXME Since this is NOT protected by a lock, concurrent insert may happen.
   for (int index_itr = index_count - 1; index_itr >= 0; --index_itr) {
     auto index = GetIndex(index_itr);
-    if(index == nullptr){
+    if (index == nullptr) {
       continue;
     }
 
@@ -717,11 +717,9 @@ const std::string DataTable::GetInfo() const {
 size_t DataTable::GetIndexCount() const {
   auto index_count = indexes_.GetSize();
   return index_count;
-  return index_count;
 }
 
 size_t DataTable::GetValidIndexCount() const {
-
   std::shared_ptr<index::Index> index;
   auto index_count = indexes_.GetSize();
   std::size_t valid_index_count = 0;
@@ -780,7 +778,7 @@ void DataTable::DropIndexWithOid(const oid_t &index_oid) {
 
   for (index_itr = 0; index_itr < index_count; index_itr++) {
     index = indexes_.Find(index_itr);
-    if (index == nullptr){
+    if (index == nullptr) {
       continue;
     }
 

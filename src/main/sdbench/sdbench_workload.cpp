@@ -101,6 +101,9 @@ std::vector<oid_t> column_counts = {50, 500};
 // Index tuner
 brain::IndexTuner &index_tuner = brain::IndexTuner::GetInstance();
 
+// Layout tuner
+brain::LayoutTuner &layout_tuner = brain::LayoutTuner::GetInstance();
+
 static int GetLowerBound() {
   int tuple_count = state.scale_factor * state.tuples_per_tilegroup;
   int predicate_offset = 0.1 * tuple_count;
@@ -222,7 +225,7 @@ static inline std::string GetOidVectorString(const std::vector<oid_t> &oids) {
  * @param index_key_attrs The columns in the *index key tuple* which the index
  * scan predicate is on. It should match the corresponding columns in
  * \b tuple_key_columns.
- * @param column_ids Column ids to added to the result tile after scan.
+ * @param column_ids Column ids to be added to the result tile after scan.
  * @return A hybrid scan executor based on the key columns.
  */
 static std::shared_ptr<planner::HybridScanPlan> CreateHybridScanPlan(
@@ -302,9 +305,46 @@ UNUSED_ATTRIBUTE static void WriteOutput(double duration) {
   out.flush();
 }
 
+/**
+ * @brief Map the accsessed columns to a access bitmap.
+ * @details We should use the output of this method to construct a Sample for
+ * layout tuning instead of passing in the accessed columns directly!!
+ */
+static std::vector<double> GetColumnsAccessed(
+    const std::vector<oid_t> &column_ids) {
+  std::vector<double> columns_accessed;
+  std::map<oid_t, oid_t> columns_accessed_map;
+
+  // Init map
+  for (auto col : column_ids) columns_accessed_map[(int)col] = 1;
+
+  for (int column_itr = 0; column_itr < state.attribute_count + 1;
+       column_itr++) {
+    auto location = columns_accessed_map.find(column_itr);
+    auto end = columns_accessed_map.end();
+    if (location != end)
+      columns_accessed.push_back(1);
+    else
+      columns_accessed.push_back(0);
+  }
+
+  return columns_accessed;
+}
+
+/**
+ * @brief Execute a set of executors and update access information.
+ *
+ * @param executors Executors to be executed.
+ * @param index_columns_accessed Columns that are accessed by index scan, used
+ * fpr index tuning.
+ * @param tuple_columns_accessed Columns of the tuples that are accessed, used
+ * for layout tuning.
+ * @param selectivity The selectivity of the operation.
+ */
 static void ExecuteTest(std::vector<executor::AbstractExecutor *> &executors,
                         brain::SampleType sample_type,
                         std::vector<std::vector<double>> index_columns_accessed,
+                        std::vector<std::vector<oid_t>> tuple_columns_accessed,
                         double selectivity) {
   Timer<> timer;
 
@@ -342,13 +382,20 @@ static void ExecuteTest(std::vector<executor::AbstractExecutor *> &executors,
 
   WriteOutput(duration);
 
-  // Construct sample
+  // Record index sample
   for (auto &index_columns : index_columns_accessed) {
-    brain::Sample index_sample(index_columns,
-                               duration / index_columns_accessed.size(),
-                               sample_type, selectivity);
-    // Record sample
-    sdbench_table->RecordIndexSample(index_sample);
+    brain::Sample index_access_sample(index_columns,
+                                      duration / index_columns_accessed.size(),
+                                      sample_type, selectivity);
+    sdbench_table->RecordIndexSample(index_access_sample);
+  }
+
+  // Record layout sample
+  for (auto &tuple_columns : tuple_columns_accessed) {
+    // Record layout sample
+    brain::Sample tuple_access_bitmap(GetColumnsAccessed(tuple_columns),
+                                      duration / tuple_columns_accessed.size());
+    sdbench_table->RecordLayoutSample(tuple_access_bitmap);
   }
 }
 
@@ -375,7 +422,7 @@ static std::shared_ptr<index::Index> PickIndex(storage::DataTable *table,
 
     auto index = table->GetIndex(index_itr);
     // Check if index exists
-    if(index == nullptr){
+    if (index == nullptr) {
       continue;
     }
 
@@ -455,13 +502,6 @@ static void RunSimpleQuery() {
     tuple_key_attrs = {11};
     index_key_attrs = {0};
   }
-
-  UNUSED_ATTRIBUTE std::stringstream os;
-  os << "Simple :: ";
-  for (auto tuple_key_attr : tuple_key_attrs) {
-    os << tuple_key_attr << " ";
-  }
-  LOG_TRACE("%s", os.str().c_str());
 
   // PHASE LENGTH
   for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
@@ -638,7 +678,7 @@ static void RunComplexQuery() {
   } else if (is_aggregate_query == true) {
     LOG_TRACE("Complex :: %s", GetOidVectorString(left_table_tuple_key_attrs +
                                                   right_table_tuple_key_attrs)
-              .c_str());
+                                   .c_str());
   } else {
     LOG_ERROR("Invalid query \n");
     return;
@@ -717,8 +757,8 @@ static void JoinQueryHelper(
                                            right_table_join_column);
 
   std::unique_ptr<expression::ComparisonExpression<expression::CmpLt>>
-  join_predicate(new expression::ComparisonExpression<expression::CmpLt>(
-      EXPRESSION_TYPE_COMPARE_LESSTHAN, left_table_attr, right_table_attr));
+      join_predicate(new expression::ComparisonExpression<expression::CmpLt>(
+          EXPRESSION_TYPE_COMPARE_LESSTHAN, left_table_attr, right_table_attr));
 
   std::unique_ptr<const planner::ProjectInfo> project_info(nullptr);
   std::shared_ptr<const catalog::Schema> schema(nullptr);
@@ -739,6 +779,7 @@ static void JoinQueryHelper(
   /////////////////////////////////////////////////////////
 
   // Create and set up materialization executor
+  // FIXME: this will always retreive all columns, projectivity is ignored
   std::vector<catalog::Column> output_columns;
   std::unordered_map<oid_t, oid_t> old_to_new_cols;
   oid_t join_column_count = column_count * 2;
@@ -776,12 +817,18 @@ static void JoinQueryHelper(
   std::vector<double> right_table_index_columns_accessed(
       right_table_tuple_key_attrs.begin(), right_table_tuple_key_attrs.end());
 
+  // Prepare tuple columns accessed
+  auto left_table_tuple_columns_accessed = left_table_tuple_key_attrs;
+  auto right_table_tuple_columns_accessed = right_table_tuple_key_attrs;
+  left_table_tuple_columns_accessed.push_back(left_table_join_column);
+  right_table_tuple_columns_accessed.push_back(right_table_join_column);
+
   auto selectivity = state.selectivity;
 
   ExecuteTest(
-      executors,
-      brain::SAMPLE_TYPE_ACCESS,
+      executors, brain::SAMPLE_TYPE_ACCESS,
       {left_table_index_columns_accessed, right_table_index_columns_accessed},
+      {left_table_tuple_columns_accessed, right_table_tuple_columns_accessed},
       selectivity);
 
   txn_manager.CommitTransaction();
@@ -789,8 +836,11 @@ static void JoinQueryHelper(
 
 static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
                                  const std::vector<oid_t> &index_key_attrs) {
-  LOG_TRACE("Run aggregate query on %s ",
-            GetOidVectorString(tuple_key_attrs).c_str());
+  if (state.verbose) {
+    LOG_INFO("Run aggregate query on %s ",
+             GetOidVectorString(tuple_key_attrs).c_str());
+  }
+
   const bool is_inlined = true;
   auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
 
@@ -851,7 +901,7 @@ static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
         EXPRESSION_TYPE_AGGREGATE_MAX,
         expression::ExpressionUtil::TupleValueFactory(VALUE_TYPE_INTEGER, 0,
                                                       column_id),
-                                                      false);
+        false);
     agg_terms.push_back(max_column_agg);
   }
 
@@ -921,10 +971,13 @@ static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
                                              tuple_key_attrs.end());
   auto selectivity = state.selectivity;
 
-  ExecuteTest(executors,
-              brain::SAMPLE_TYPE_ACCESS,
-              {index_columns_accessed},
-              selectivity);
+  auto tuple_columns_accessed = tuple_key_attrs;
+  for (auto column_id : column_ids) {
+    tuple_columns_accessed.push_back(column_id);
+  }
+
+  ExecuteTest(executors, brain::SAMPLE_TYPE_ACCESS, {index_columns_accessed},
+              {tuple_columns_accessed}, selectivity);
 
   txn_manager.CommitTransaction();
 }
@@ -1022,10 +1075,13 @@ static void UpdateHelper(const std::vector<oid_t> &tuple_key_attrs,
                                              tuple_key_attrs.end());
   auto selectivity = state.selectivity;
 
-  ExecuteTest(executors,
-              brain::SAMPLE_TYPE_ACCESS,
-              {index_columns_accessed},
-              selectivity);
+  auto tuple_columns_accessed = tuple_key_attrs;
+  for (oid_t update_attr : update_attrs) {
+    tuple_columns_accessed.push_back(update_attr);
+  }
+
+  ExecuteTest(executors, brain::SAMPLE_TYPE_ACCESS, {index_columns_accessed},
+              {tuple_columns_accessed}, selectivity);
 
   txn_manager.CommitTransaction();
 }
@@ -1086,7 +1142,6 @@ static void RunSimpleUpdate() {
   for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
     UpdateHelper(tuple_key_attrs, index_key_attrs, update_attrs);
   }
-
 }
 
 static void RunComplexUpdate() {
@@ -1143,7 +1198,6 @@ static void RunComplexUpdate() {
   for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
     UpdateHelper(tuple_key_attrs, index_key_attrs, update_attrs);
   }
-
 }
 
 /**
@@ -1217,7 +1271,7 @@ static bool HasIndexConfigurationConverged() {
   for (oid_t index_itr = 0; index_itr < index_count; index_itr++) {
     // Get index
     auto index = sdbench_table->GetIndex(index_itr);
-    if(index == nullptr){
+    if (index == nullptr) {
       continue;
     }
 
@@ -1278,7 +1332,6 @@ static bool HasIndexConfigurationConverged() {
 }
 
 void RunSDBenchTest() {
-
   // Setup index tuner
   index_tuner.SetSampleCountThreshold(state.sample_count_threshold);
   index_tuner.SetMaxTileGroupsIndexed(state.max_tile_groups_indexed);
@@ -1288,12 +1341,10 @@ void RunSDBenchTest() {
 
   std::thread index_builder;
 
-  peloton_layout_mode = state.layout_mode;
-
   // Generate sequence
   GenerateSequence(state.attribute_count);
 
-  CreateAndLoadTable((LayoutType)peloton_layout_mode);
+  CreateAndLoadTable((LayoutType)state.layout_mode);
 
   double write_ratio = state.write_ratio;
   double phase_count = state.total_ops / state.phase_length;
@@ -1319,11 +1370,19 @@ void RunSDBenchTest() {
   Timer<> index_unchanged_timer;
 
   // Start index tuner
-  if(state.index_usage_type != INDEX_USAGE_TYPE_NEVER){
+  if (state.index_usage_type != INDEX_USAGE_TYPE_NEVER) {
     index_tuner.AddTable(sdbench_table.get());
 
     // Start after adding tables
     index_tuner.Start();
+  }
+
+  // Start layout tuner
+  if (state.layout_mode == LAYOUT_TYPE_HYBRID) {
+    layout_tuner.AddTable(sdbench_table.get());
+
+    // Start layout tuner
+    layout_tuner.Start();
   }
 
   // seed generator
@@ -1344,24 +1403,27 @@ void RunSDBenchTest() {
     // Check index convergence
     if (state.convergence == true) {
       bool converged = HasIndexConfigurationConverged();
-      if(converged == true) {
+      if (converged == true) {
         break;
       }
     }
-
   }
 
   // Stop index tuner
-  if(state.index_usage_type != INDEX_USAGE_TYPE_NEVER){
+  if (state.index_usage_type != INDEX_USAGE_TYPE_NEVER) {
     index_tuner.Stop();
     index_tuner.ClearTables();
+  }
+
+  if (state.layout_mode == LAYOUT_TYPE_HYBRID) {
+    layout_tuner.Stop();
+    layout_tuner.ClearTables();
   }
 
   // Drop Indexes
   DropIndexes();
 
   // Reset
-  state.adapt_layout = false;
   query_itr = 0;
 
   LOG_INFO("Duration : %.2lf", total_duration);

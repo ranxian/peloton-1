@@ -10,33 +10,32 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #include "benchmark/sdbench/sdbench_loader.h"
 #include "benchmark/sdbench/sdbench_configuration.h"
 
+#include <chrono>
+#include <ctime>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <chrono>
-#include <iostream>
-#include <ctime>
 
 #include "catalog/manager.h"
 #include "catalog/schema.h"
+#include "common/logger.h"
+#include "common/macros.h"
 #include "concurrency/transaction.h"
 #include "concurrency/transaction_manager_factory.h"
-#include "common/macros.h"
-#include "common/logger.h"
 #include "executor/abstract_executor.h"
 #include "executor/insert_executor.h"
 #include "expression/constant_value_expression.h"
 #include "index/index_factory.h"
 #include "planner/insert_plan.h"
-#include "storage/tile.h"
-#include "storage/tile_group.h"
 #include "storage/data_table.h"
 #include "storage/table_factory.h"
+#include "storage/tile.h"
+#include "storage/tile_group.h"
 
 namespace peloton {
 namespace benchmark {
@@ -71,7 +70,6 @@ void CreateTable() {
   sdbench_table.reset(storage::TableFactory::GetDataTable(
       INVALID_OID, INVALID_OID, table_schema, table_name,
       state.tuples_per_tilegroup, own_schema, adapt_table));
-
 }
 
 void LoadTable() {
@@ -120,10 +118,8 @@ void CreateAndLoadTable(LayoutType layout_type) {
 }
 
 void DropIndexes() {
-
   // Drop index
   sdbench_table->DropIndexes();
-
 }
 
 }  // namespace sdbench

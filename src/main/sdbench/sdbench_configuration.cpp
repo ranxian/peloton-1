@@ -45,8 +45,7 @@ void Usage() {
       "   -w --write_ratio                   :  Fraction of writes\n"
       "   -x --index_count_threshold         :  Index count threshold\n"
       "   -y --index_utility_threshold       :  Index utility threshold\n"
-      "   -z --write_ratio_threshold         :  Write ratio threshold\n"
-  );
+      "   -z --write_ratio_threshold         :  Write ratio threshold\n");
   exit(EXIT_FAILURE);
 }
 
@@ -72,8 +71,7 @@ static struct option opts[] = {
     {"index_count_threshold", optional_argument, NULL, 'x'},
     {"index_utility_threshold", optional_argument, NULL, 'y'},
     {"write_ratio_threshold", optional_argument, NULL, 'z'},
-    {NULL, 0, NULL, 0}
-};
+    {NULL, 0, NULL, 0}};
 
 void GenerateSequence(oid_t column_count) {
   // Reset sequence
@@ -219,20 +217,15 @@ static void ValidateWriteRatio(const configuration &state) {
 
   if (state.write_ratio == 0) {
     LOG_INFO("%s : READ_ONLY", "write_ratio");
-  }
-  else if (state.write_ratio == 0.1) {
+  } else if (state.write_ratio == 0.1) {
     LOG_INFO("%s : READ_HEAVY", "write_ratio");
-  }
-  else if (state.write_ratio == 0.5) {
+  } else if (state.write_ratio == 0.5) {
     LOG_INFO("%s : BALANCED", "write_ratio");
-  }
-  else if (state.write_ratio == 0.9) {
+  } else if (state.write_ratio == 0.9) {
     LOG_INFO("%s : WRITE_HEAVY", "write_ratio");
-  }
-  else {
+  } else {
     LOG_INFO("%s : %.1lf", "write_ratio", state.write_ratio);
   }
-
 }
 
 static void ValidateTotalOps(const configuration &state) {
@@ -326,7 +319,8 @@ static void ValidateIndexUtilityThreshold(const configuration &state) {
     exit(EXIT_FAILURE);
   }
 
-  LOG_INFO("%s : %.2lf", "index_utility_threshold", state.index_utility_threshold);
+  LOG_INFO("%s : %.2lf", "index_utility_threshold",
+           state.index_utility_threshold);
 }
 
 static void ValidateWriteRatioThreshold(const configuration &state) {
@@ -340,7 +334,6 @@ static void ValidateWriteRatioThreshold(const configuration &state) {
 }
 
 void ParseArguments(int argc, char *argv[], configuration &state) {
-
   state.verbose = false;
 
   // Default Values
@@ -366,10 +359,6 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   // Layout parameter
   state.layout_mode = LAYOUT_TYPE_ROW;
 
-  // Adapt parameters
-  state.adapt_layout = false;
-  state.adapt_indexes = true;
-
   // Learning rate
   state.sample_count_threshold = 10;
   state.max_tile_groups_indexed = 10;
@@ -389,8 +378,8 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   // Parse args
   while (1) {
     int idx = 0;
-    int c = getopt_long(argc, argv, "a:b:c:d:e:f:g:hk:l:m:o:p:q:s:t:u:v:w:x:y:z:",
-                        opts, &idx);
+    int c = getopt_long(
+        argc, argv, "a:b:c:d:e:f:g:hk:l:m:o:p:q:s:t:u:v:w:x:y:z:", opts, &idx);
 
     if (c == -1) break;
 

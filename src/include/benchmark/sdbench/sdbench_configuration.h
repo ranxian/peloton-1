@@ -51,6 +51,14 @@ enum WriteComplexityType {
   WRITE_COMPLEXITY_TYPE_COMPLEX = 2
 };
 
+// Copy from types.h for reference
+// typedef enum LayoutType {
+//   LAYOUT_TYPE_INVALID = 0,
+//   LAYOUT_TYPE_ROW = 1,    /* Pure row layout */
+//   LAYOUT_TYPE_COLUMN = 2, /* Pure column layout */
+//   LAYOUT_TYPE_HYBRID = 3  /* Hybrid layout */
+// } LayoutType;
+
 extern int orig_scale_factor;
 
 static const int generator_seed = 50;
@@ -90,12 +98,6 @@ class configuration {
   // total number of ops
   long total_ops;
 
-  // Adapt the layout ?
-  bool adapt_layout;
-
-  // Adapt the indexes ?
-  bool adapt_indexes;
-
   // Verbose output
   bool verbose;
 
@@ -128,7 +130,6 @@ class configuration {
 
   // write intensive workload ratio threshold
   double write_ratio_threshold;
-
 };
 
 void Usage(FILE *out);
