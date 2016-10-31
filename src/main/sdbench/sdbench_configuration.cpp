@@ -324,14 +324,14 @@ static void ValidateConvergence(const configuration &state) {
 }
 
 static void ValidateQueryConvergenceThreshold(const configuration &state) {
-  if (state.convergence_query_threshold <= 0) {
+  if (state.convergence_op_threshold <= 0) {
     LOG_ERROR("Invalid convergence_query_threshold :: %u",
-              state.convergence_query_threshold);
+              state.convergence_op_threshold);
     exit(EXIT_FAILURE);
   }
 
   LOG_INFO("%s : %u", "convergence_query_threshold",
-           state.convergence_query_threshold);
+           state.convergence_op_threshold);
 }
 
 static void ValidateVariabilityThreshold(const configuration &state) {
@@ -393,8 +393,8 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   state.tuples_per_tilegroup = DEFAULT_TUPLES_PER_TILEGROUP;
 
   // Phase parameters
-  state.total_ops = 1;
-  state.phase_length = 1;
+  state.total_ops = 10;
+  state.phase_length = 10;
 
   // Query parameters
   state.selectivity = 0.001;
@@ -410,7 +410,7 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
 
   // Convergence parameters
   state.convergence = false;
-  state.convergence_query_threshold = 200;
+  state.convergence_op_threshold = 200;
 
   // Variability parameters
   state.variability_threshold = 25;
@@ -434,7 +434,7 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
         state.attribute_count = atoi(optarg);
         break;
       case 'b':
-        state.convergence_query_threshold = atoi(optarg);
+        state.convergence_op_threshold = atoi(optarg);
         break;
       case 'c':
         state.query_complexity_type = (QueryComplexityType)atoi(optarg);

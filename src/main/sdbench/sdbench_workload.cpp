@@ -1248,7 +1248,7 @@ struct IndexSummary {
   bool completed;
 };
 
-static int index_unchanged_phase_count = 0;
+static size_t stable_index_configuration_op_count = 0;
 
 /**
  * @brief Check if index scheme has converged.
@@ -1259,7 +1259,7 @@ static int index_unchanged_phase_count = 0;
 static bool HasIndexConfigurationConverged() {
   static IndexSummary prev_index_summary;
   // If the index configuration stays the same
-  // for "INDEX_CONVERGE_THRESHOLD" continuous phases,
+  // for "convergence_query_threshold" continuous queries,
   // then it's considered as converged.
 
   IndexSummary index_summary;
@@ -1295,7 +1295,7 @@ static bool HasIndexConfigurationConverged() {
 
   if (index_summary.completed == false) {
     prev_index_summary = index_summary;
-    index_unchanged_phase_count = 0;
+    stable_index_configuration_op_count = 0;
     return false;
   }
 
@@ -1314,17 +1314,16 @@ static bool HasIndexConfigurationConverged() {
 
   // Update index unchanged phase count
   if (identical) {
-    index_unchanged_phase_count += 1;
+    stable_index_configuration_op_count += 1;
   } else {
-    index_unchanged_phase_count = 0;
+    stable_index_configuration_op_count = 0;
   }
 
   prev_index_summary = index_summary;
 
-  // Check threshold # of phases
-  int convergence_phase_threshold =
-      state.convergence_query_threshold / state.phase_length;
-  if (index_unchanged_phase_count >= convergence_phase_threshold) {
+  // Check threshold # of ops
+  if (stable_index_configuration_op_count
+      >= state.convergence_op_threshold) {
     return true;
   }
 
@@ -1348,19 +1347,6 @@ void RunSDBenchTest() {
   CreateAndLoadTable((LayoutType)state.layout_mode);
 
   double write_ratio = state.write_ratio;
-  double phase_count = state.total_ops / state.phase_length;
-
-  // Convergence test
-  const double CONVERGENCE_PHASE_COUNT_THRESHOLD = 10000;
-  if (state.convergence == true) {
-    phase_count = CONVERGENCE_PHASE_COUNT_THRESHOLD;
-  }
-
-  if (phase_count > CONVERGENCE_PHASE_COUNT_THRESHOLD) {
-    LOG_INFO("Too many phases, current phase count threshold is %.0lf",
-             CONVERGENCE_PHASE_COUNT_THRESHOLD);
-    exit(EXIT_FAILURE);
-  }
 
   // Reset total duration
   total_duration = 0;
@@ -1386,10 +1372,26 @@ void RunSDBenchTest() {
     layout_tuner.Start();
   }
 
+  // cache original phase length
+  size_t original_phase_length = state.phase_length;
+  if(original_phase_length < 5){
+    LOG_ERROR("Phase length must be greater than 5");
+    return;
+  }
+
   // seed generator
   srand(generator_seed);
 
-  for (oid_t phase_itr = 0; phase_itr < phase_count; phase_itr++) {
+  // run desired number of ops
+  for (oid_t op_itr = 0; op_itr < state.total_ops; op_itr++) {
+
+    // set phase length (NOTE: uneven across phases)
+    size_t minimum_op_count = (original_phase_length/5);
+    size_t rest_op_count = original_phase_length - minimum_op_count;
+    size_t current_phase_length = minimum_op_count + rand() % rest_op_count;
+    state.phase_length = current_phase_length;
+    op_itr += current_phase_length;
+
     double rand_sample = (double)rand() / RAND_MAX;
 
     // Do insert
@@ -1408,6 +1410,7 @@ void RunSDBenchTest() {
         break;
       }
     }
+
   }
 
   // Stop index tuner

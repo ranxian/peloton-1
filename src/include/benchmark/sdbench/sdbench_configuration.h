@@ -140,7 +140,7 @@ class configuration {
   // CONVERGENCE PARAMETER
 
   // number of queries for which index configuration must remain stable
-  oid_t convergence_query_threshold;
+  oid_t convergence_op_threshold;
 
   // VARIABILITY PARAMETER
   oid_t variability_threshold;
