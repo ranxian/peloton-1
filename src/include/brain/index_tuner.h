@@ -70,12 +70,16 @@ class IndexTuner {
   // Clear list
   void ClearTables();
 
-  void SetSampleCountThreshold(const oid_t &sample_count_threshold_) {
-    sample_count_threshold = sample_count_threshold_;
+  void SetBuildSampleCountThreshold(const oid_t &build_sample_count_threshold_) {
+    build_sample_count_threshold = build_sample_count_threshold_;
   }
 
-  void SetMaxTileGroupsIndexed(const oid_t &max_tile_groups_indexed_) {
-    max_tile_groups_indexed = max_tile_groups_indexed_;
+  void SetAnalyzeSampleCountThreshold(const oid_t &analyze_sample_count_threshold_) {
+    analyze_sample_count_threshold = analyze_sample_count_threshold_;
+  }
+
+  void SetTileGroupsIndexedPerIteration(const oid_t &tile_groups_indexed_per_iteration_) {
+    tile_groups_indexed_per_iteration = tile_groups_indexed_per_iteration_;
   }
 
   void SetIndexUtilityThreshold(const double& index_utility_threshold_){
@@ -128,12 +132,15 @@ class IndexTuner {
   oid_t sleep_duration = 10;
 
   // Threshold sample count
-  // LEARNING RATE
-  oid_t sample_count_threshold = 10;
+
+  // frequency with which index building happens
+  oid_t build_sample_count_threshold = 10;
+
+  // frequency with which index analysis happens
+  oid_t analyze_sample_count_threshold = 10;
 
   // # of tile groups to be indexed per iteration
-  // INDEX CONSTRUCTION SPEED
-  oid_t max_tile_groups_indexed = 20;
+  oid_t tile_groups_indexed_per_iteration = 20;
 
   // alpha (weight for old samples)
   double alpha = 0.2;

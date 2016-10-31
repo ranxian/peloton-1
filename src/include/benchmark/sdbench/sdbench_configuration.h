@@ -24,15 +24,29 @@ namespace peloton {
 namespace benchmark {
 namespace sdbench {
 
+enum TunerAnalyzeType{
+  TUNER_ANALYZE_TYPE_INVALID = 0,
+
+  TUNER_ANALYZE_TYPE_FAST = 1,  // tuner analyze fast
+  TUNER_ANALYZE_TYPE_SLOW = 2,  // tuner analyze slow
+
+};
+
+enum TunerBuildType {
+  TUNER_BUILD_TYPE_INVALID = 0,
+
+  TUNER_BUILD_TYPE_FAST = 1,      // tuner build fast
+  TUNER_BUILD_TYPE_SLOW = 2,      // tuner build slow
+
+};
+
 enum IndexUsageType {
   INDEX_USAGE_TYPE_INVALID = 0,
 
-  INDEX_USAGE_TYPE_AGGRESSIVE = 1,    // use partial indexes aggressively
-  INDEX_USAGE_TYPE_BALANCED = 2,      // use partial indexes balanced
-  INDEX_USAGE_TYPE_CONSERVATIVE = 3,  // use partial indexes conservatively
-  INDEX_USAGE_TYPE_NEVER = 4,         // don't use indexes (no online tuning)
+  INDEX_USAGE_TYPE_PARTIAL = 1,    // use partially materialized indexes
+  INDEX_USAGE_TYPE_NEVER = 2,      // never use indexes
+  INDEX_USAGE_TYPE_FULL = 3,       // use only fully materialized indexes
 
-  INDEX_USAGE_TYPE_FULL = 5,  // only use full indexes
 };
 
 enum QueryComplexityType {
@@ -65,6 +79,12 @@ static const int generator_seed = 50;
 
 class configuration {
  public:
+  // Build speed
+  TunerBuildType tuner_build_type;
+
+  // Analysis speed
+  TunerAnalyzeType tuner_analyze_type;
+
   // What kind of indexes can be used ?
   IndexUsageType index_usage_type;
 
@@ -106,11 +126,16 @@ class configuration {
 
   // INDEX TUNER PARAMETERS
 
-  // sample count threshold after which "a" tuning iteration takes place
-  oid_t sample_count_threshold;
+  // sample count threshold after which
+  // tuner build iteration takes place
+  oid_t build_sample_count_threshold;
+
+  // sample count threshold after which
+  // tuner analyze iteration takes place
+  oid_t analyze_sample_count_threshold;
 
   // max tile groups indexed per tuning iteration per table
-  oid_t max_tile_groups_indexed;
+  oid_t tile_groups_indexed_per_iteration;
 
   // CONVERGENCE PARAMETER
 

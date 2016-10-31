@@ -98,7 +98,7 @@ void IndexTuner::BuildIndex(storage::DataTable* table,
   std::unique_ptr<storage::Tuple> key(new storage::Tuple(index_schema, true));
 
   while (index_tile_group_offset < table_tile_group_count &&
-         (tile_groups_indexed < max_tile_groups_indexed)) {
+         (tile_groups_indexed < tile_groups_indexed_per_iteration)) {
     std::unique_ptr<storage::Tuple> tuple_ptr(
         new storage::Tuple(table_schema, true));
 
@@ -461,19 +461,24 @@ void IndexTuner::IndexTuneHelper(storage::DataTable* table) {
   auto& samples = table->GetIndexSamples();
   auto sample_count = samples.size();
 
-  // Check if we have sufficient number of samples
-  if (sample_count < sample_count_threshold) {
-    return;
+  // Check if we have sufficient number of samples for build
+  if (sample_count >= build_sample_count_threshold) {
+
+    // Build desired indices
+    BuildIndices(table);
+
   }
 
-  // Add required indices
-  Analyze(table);
+  // Check if we have sufficient number of samples for build
+  if (sample_count >= analyze_sample_count_threshold) {
 
-  // Build desired indices
-  BuildIndices(table);
+    // Add required indices
+    Analyze(table);
 
-  // Clear all current samples in table
-  table->ClearIndexSamples();
+    // Clear all current samples in table
+    table->ClearIndexSamples();
+  }
+
 }
 
 oid_t IndexTuner::GetIndexCount() const {
