@@ -398,7 +398,7 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
 
   // Query parameters
   state.selectivity = 0.001;
-  state.projectivity = 1.0;
+  state.projectivity = 0.1;
 
   // Layout parameter
   state.layout_mode = LAYOUT_TYPE_ROW;
@@ -530,22 +530,16 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
 
   // Setup tuner analyze rate
   if (state.tuner_analyze_type == TUNER_ANALYZE_TYPE_FAST) {
-    state.analyze_sample_count_threshold = 200;
-  } else if (state.tuner_analyze_type == TUNER_ANALYZE_TYPE_SLOW) {
     state.analyze_sample_count_threshold = 5;
+  } else if (state.tuner_analyze_type == TUNER_ANALYZE_TYPE_SLOW) {
+    state.analyze_sample_count_threshold = 200;
   }
 
   // Setup tuner build rate
   if (state.tuner_build_type == TUNER_BUILD_TYPE_FAST) {
-    state.build_sample_count_threshold = 200;
-  } else if (state.tuner_build_type == TUNER_BUILD_TYPE_SLOW) {
     state.build_sample_count_threshold = 5;
-  }
-
-  // Check sample count thresholds
-  if(state.build_sample_count_threshold > state.analyze_sample_count_threshold){
-    LOG_ERROR("Build sample count higher than analysis sample count");
-    exit(EXIT_FAILURE);
+  } else if (state.tuner_build_type == TUNER_BUILD_TYPE_SLOW) {
+    state.build_sample_count_threshold = 200;
   }
 
   // Setup tile groups indexed per iteration based on scale factor

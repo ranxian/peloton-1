@@ -466,7 +466,6 @@ void IndexTuner::IndexTuneHelper(storage::DataTable* table) {
 
     // Build desired indices
     BuildIndices(table);
-
   }
 
   // Check if we have sufficient number of samples for build
