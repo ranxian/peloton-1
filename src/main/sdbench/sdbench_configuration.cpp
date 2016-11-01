@@ -362,7 +362,7 @@ static void ValidateQueryConvergenceThreshold(const configuration &state) {
 }
 
 static void ValidateVariabilityThreshold(const configuration &state) {
-  if (state.variability_threshold <= 0 || state.variability_threshold > 25) {
+  if (state.variability_threshold <= 0 || state.variability_threshold > 1000) {
     LOG_ERROR("Invalid variability_threshold :: %u",
               state.variability_threshold);
     exit(EXIT_FAILURE);
@@ -440,7 +440,7 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   state.convergence_op_threshold = 200;
 
   // Variability parameters
-  state.variability_threshold = 25;
+  state.variability_threshold = 10;
 
   // Drop parameters
   state.index_utility_threshold = 0.25;
@@ -567,6 +567,7 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
       // use only fully materialized indexes
       state.index_usage_type = INDEX_USAGE_TYPE_FULL;
       state.tuner_build_type = TUNER_BUILD_TYPE_SLOW;
+      state.tuner_analyze_type = TUNER_ANALYZE_TYPE_SLOW;
       break;
     }
     case TUNER_MODE_TYPE_NEVER: {
@@ -621,6 +622,8 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   ValidateConvergence(state);
   ValidateQueryConvergenceThreshold(state);
   ValidateVariabilityThreshold(state);
+
+
 }
 
 }  // namespace sdbench

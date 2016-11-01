@@ -134,7 +134,7 @@ class configuration {
   std::size_t phase_length;
 
   // total number of ops
-  long total_ops;
+  size_t total_ops;
 
   // Verbose output
   bool verbose;

@@ -104,6 +104,38 @@ brain::IndexTuner &index_tuner = brain::IndexTuner::GetInstance();
 // Layout tuner
 brain::LayoutTuner &layout_tuner = brain::LayoutTuner::GetInstance();
 
+// Predicate generator
+std::vector<std::vector<oid_t>> predicate_distribution;
+
+std::size_t predicate_distribution_size = 0;
+
+static void GeneratePredicateDistribution() {
+
+  for(oid_t i = 1; i <= 9; i++) {
+    for(oid_t j = 1; j <= 9; j++) {
+      for(oid_t k = 1; k <= 9; k++) {
+        if(i != j && j != k && i != k) {
+          predicate_distribution.push_back(std::vector<oid_t>{i, j, k});
+        }
+      }
+    }
+  }
+
+  predicate_distribution_size = predicate_distribution.size();
+}
+
+static std::vector<oid_t> GetPredicate(){
+  if(state.variability_threshold >= predicate_distribution_size){
+    LOG_ERROR("Don't have enough samples");
+    exit(EXIT_FAILURE);
+  }
+
+  auto sample = rand() % state.variability_threshold;
+  LOG_INFO("Predicate : %u", sample);
+  auto predicate = predicate_distribution[sample];
+  return predicate;
+}
+
 static int GetLowerBound() {
   int tuple_count = state.scale_factor * state.tuples_per_tilegroup;
   int predicate_offset = 0.1 * tuple_count;
@@ -467,41 +499,10 @@ static void RunSimpleQuery() {
   std::vector<oid_t> tuple_key_attrs;
   std::vector<oid_t> index_key_attrs;
 
-  auto rand_sample = rand() % state.variability_threshold;
-  if (rand_sample <= 5) {
-    tuple_key_attrs = {1};
-    index_key_attrs = {0};
-  } else if (rand_sample <= 9) {
-    tuple_key_attrs = {2};
-    index_key_attrs = {0};
-  } else if (rand_sample <= 11) {
-    tuple_key_attrs = {3};
-    index_key_attrs = {0};
-  } else if (rand_sample <= 15) {
-    tuple_key_attrs = {4};
-    index_key_attrs = {0};
-  } else if (rand_sample <= 17) {
-    tuple_key_attrs = {5};
-    index_key_attrs = {0};
-  } else if (rand_sample <= 18) {
-    tuple_key_attrs = {6};
-    index_key_attrs = {0};
-  } else if (rand_sample <= 19) {
-    tuple_key_attrs = {7};
-    index_key_attrs = {0};
-  } else if (rand_sample <= 20) {
-    tuple_key_attrs = {8};
-    index_key_attrs = {0};
-  } else if (rand_sample <= 21) {
-    tuple_key_attrs = {9};
-    index_key_attrs = {0};
-  } else if (rand_sample <= 23) {
-    tuple_key_attrs = {10};
-    index_key_attrs = {0};
-  } else {
-    tuple_key_attrs = {11};
-    index_key_attrs = {0};
-  }
+  auto predicate = GetPredicate();
+  auto first_attribute = predicate[0];
+  tuple_key_attrs = {first_attribute};
+  index_key_attrs = {0};
 
   // PHASE LENGTH
   for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
@@ -515,41 +516,9 @@ static void RunModerateQuery() {
   std::vector<oid_t> tuple_key_attrs;
   std::vector<oid_t> index_key_attrs;
 
-  auto rand_sample = rand() % state.variability_threshold;
-  if (rand_sample <= 5) {
-    tuple_key_attrs = {3, 8, 9};
-    index_key_attrs = {0, 1, 2};
-  } else if (rand_sample <= 9) {
-    tuple_key_attrs = {4, 9, 11};
-    index_key_attrs = {0, 1, 2};
-  } else if (rand_sample <= 11) {
-    tuple_key_attrs = {1, 4, 7};
-    index_key_attrs = {0, 1, 2};
-  } else if (rand_sample <= 15) {
-    tuple_key_attrs = {2, 3, 5};
-    index_key_attrs = {0, 1, 2};
-  } else if (rand_sample <= 17) {
-    tuple_key_attrs = {5, 8, 9, 10};
-    index_key_attrs = {0, 1, 2, 3};
-  } else if (rand_sample <= 18) {
-    tuple_key_attrs = {6, 10, 11, 12};
-    index_key_attrs = {0, 1, 2, 3};
-  } else if (rand_sample <= 19) {
-    tuple_key_attrs = {7, 8, 10, 11};
-    index_key_attrs = {0, 1, 2, 3};
-  } else if (rand_sample <= 20) {
-    tuple_key_attrs = {7, 8, 9, 11, 12, 13};
-    index_key_attrs = {0, 1, 2, 3, 4, 5};
-  } else if (rand_sample <= 21) {
-    tuple_key_attrs = {4, 9, 10, 11, 12, 13};
-    index_key_attrs = {0, 1, 2, 3, 4, 5};
-  } else if (rand_sample <= 23) {
-    tuple_key_attrs = {6, 7, 8, 9, 10, 11, 12};
-    index_key_attrs = {0, 1, 2, 3, 4, 5, 6};
-  } else {
-    tuple_key_attrs = {1, 3, 5, 6, 7, 8, 11, 12};
-    index_key_attrs = {0, 1, 2, 3, 4, 5, 6, 7};
-  }
+  auto predicate = GetPredicate();
+  tuple_key_attrs = predicate;
+  index_key_attrs = {0, 1, 2};
 
   LOG_TRACE("Moderate :: %s", GetOidVectorString(tuple_key_attrs).c_str());
 
@@ -581,96 +550,23 @@ static void RunComplexQuery() {
 
   // Assume there are 20 columns,
   // 10 for the left table, 10 for the right table
-  auto rand_sample = rand() % state.variability_threshold;
-  if (rand_sample <= 5) {
-    left_table_tuple_key_attrs = {4};
-    left_table_index_key_attrs = {0};
-    right_table_tuple_key_attrs = {11};
-    right_table_index_key_attrs = {0};
-    left_table_join_column = 6;
-    right_table_join_column = 13;
+  auto predicate = GetPredicate();
+  left_table_tuple_key_attrs = predicate;
+  left_table_index_key_attrs = {0, 1, 2};
+  right_table_tuple_key_attrs = {predicate[0] + 10, predicate[1] + 10, predicate[2] + 10};
+  right_table_index_key_attrs = {0, 1, 2};
+
+  predicate = GetPredicate();
+  left_table_join_column = predicate[0];
+  right_table_join_column = predicate[1];
+
+  // Pick join or aggregate
+  auto sample = rand() % 10;
+  if(sample > 5) {
     is_join_query = true;
-  } else if (rand_sample <= 9) {
-    left_table_tuple_key_attrs = {5};
-    left_table_index_key_attrs = {0};
-    right_table_tuple_key_attrs = {12};
-    right_table_index_key_attrs = {0};
-    left_table_join_column = 6;
-    right_table_join_column = 13;
-    is_join_query = true;
-  } else if (rand_sample <= 11) {
-    left_table_tuple_key_attrs = {3, 4, 8};
-    left_table_index_key_attrs = {0, 1, 2};
-    right_table_tuple_key_attrs = {7, 10, 12};
-    right_table_index_key_attrs = {0, 1, 2};
-    left_table_join_column = 6;
-    right_table_join_column = 13;
-    is_join_query = true;
+  }
+  else {
     is_aggregate_query = true;
-  } else if (rand_sample <= 15) {
-    left_table_tuple_key_attrs = {3, 4, 9};
-    left_table_index_key_attrs = {0, 1, 2};
-    right_table_tuple_key_attrs = {5, 8, 12};
-    right_table_index_key_attrs = {0, 1, 2};
-    left_table_join_column = 6;
-    right_table_join_column = 13;
-    is_join_query = true;
-  } else if (rand_sample <= 17) {
-    left_table_tuple_key_attrs = {1, 2, 5};
-    left_table_index_key_attrs = {0, 1, 2};
-    right_table_tuple_key_attrs = {7, 9, 11};
-    right_table_index_key_attrs = {0, 1, 2};
-    left_table_join_column = 6;
-    right_table_join_column = 13;
-    is_join_query = true;
-  } else if (rand_sample <= 18) {
-    left_table_tuple_key_attrs = {3, 4, 5, 8};
-    left_table_index_key_attrs = {0, 1, 2, 3};
-    right_table_tuple_key_attrs = {10, 11, 12, 15};
-    right_table_index_key_attrs = {0, 1, 2, 3};
-    left_table_join_column = 6;
-    right_table_join_column = 13;
-    is_join_query = true;
-  } else if (rand_sample <= 19) {
-    left_table_tuple_key_attrs = {3, 4, 5};
-    left_table_index_key_attrs = {0, 1, 2};
-    right_table_tuple_key_attrs = {10, 11, 12};
-    right_table_index_key_attrs = {0, 1, 2};
-    left_table_join_column = 6;
-    right_table_join_column = 13;
-    is_join_query = true;
-  } else if (rand_sample <= 20) {
-    left_table_tuple_key_attrs = {3};
-    left_table_index_key_attrs = {0};
-    right_table_tuple_key_attrs = {10};
-    right_table_index_key_attrs = {0};
-    left_table_join_column = 5;
-    right_table_join_column = 12;
-    is_join_query = true;
-  } else if (rand_sample <= 21) {
-    left_table_tuple_key_attrs = {5, 6, 7, 8};
-    left_table_index_key_attrs = {0, 1, 2, 3};
-    right_table_tuple_key_attrs = {12, 13};
-    right_table_index_key_attrs = {0, 1};
-    left_table_join_column = 4;
-    right_table_join_column = 11;
-    is_join_query = true;
-  } else if (rand_sample <= 23) {
-    left_table_tuple_key_attrs = {3, 5};
-    left_table_index_key_attrs = {0, 1};
-    right_table_tuple_key_attrs = {10, 12};
-    right_table_index_key_attrs = {0, 1};
-    left_table_join_column = 4;
-    right_table_join_column = 11;
-    is_join_query = true;
-  } else {
-    left_table_tuple_key_attrs = {3, 4};
-    left_table_index_key_attrs = {0, 1};
-    right_table_tuple_key_attrs = {10, 11};
-    right_table_index_key_attrs = {0, 1};
-    left_table_join_column = 5;
-    right_table_join_column = 12;
-    is_join_query = true;
   }
 
   if (is_join_query == true) {
@@ -1091,43 +987,12 @@ static void RunSimpleUpdate() {
   std::vector<oid_t> index_key_attrs;
   std::vector<oid_t> update_attrs;
 
-  update_attrs = {15, 16, 17, 18, 19};
+  update_attrs = {15, 16, 17};
 
-  auto rand_sample = rand() % state.variability_threshold;
-  if (rand_sample <= 5) {
-    tuple_key_attrs = {1};
-    index_key_attrs = {0};
-  } else if (rand_sample <= 9) {
-    tuple_key_attrs = {2};
-    index_key_attrs = {0};
-  } else if (rand_sample <= 11) {
-    tuple_key_attrs = {3};
-    index_key_attrs = {0};
-  } else if (rand_sample <= 15) {
-    tuple_key_attrs = {4};
-    index_key_attrs = {0};
-  } else if (rand_sample <= 17) {
-    tuple_key_attrs = {5};
-    index_key_attrs = {0};
-  } else if (rand_sample <= 18) {
-    tuple_key_attrs = {6};
-    index_key_attrs = {0};
-  } else if (rand_sample <= 19) {
-    tuple_key_attrs = {7};
-    index_key_attrs = {0};
-  } else if (rand_sample <= 20) {
-    tuple_key_attrs = {8};
-    index_key_attrs = {0};
-  } else if (rand_sample <= 21) {
-    tuple_key_attrs = {9};
-    index_key_attrs = {0};
-  } else if (rand_sample <= 23) {
-    tuple_key_attrs = {10};
-    index_key_attrs = {0};
-  } else {
-    tuple_key_attrs = {11};
-    index_key_attrs = {0};
-  }
+  auto predicate = GetPredicate();
+  auto first_attribute = predicate[0];
+  tuple_key_attrs = {first_attribute};
+  index_key_attrs = {0};
 
   UNUSED_ATTRIBUTE std::stringstream os;
   os << "Simple Update :: ";
@@ -1149,43 +1014,11 @@ static void RunComplexUpdate() {
   std::vector<oid_t> index_key_attrs;
   std::vector<oid_t> update_attrs;
 
-  update_attrs = {15, 16, 17, 18, 19};
+  update_attrs = {15, 16, 17};
 
-  auto rand_sample = rand() % state.variability_threshold;
-  if (rand_sample <= 5) {
-    tuple_key_attrs = {3, 8, 9};
-    index_key_attrs = {0, 1, 2};
-  } else if (rand_sample <= 9) {
-    tuple_key_attrs = {4, 9, 11};
-    index_key_attrs = {0, 1, 2};
-  } else if (rand_sample <= 11) {
-    tuple_key_attrs = {1, 4, 7};
-    index_key_attrs = {0, 1, 2};
-  } else if (rand_sample <= 15) {
-    tuple_key_attrs = {2, 3, 5};
-    index_key_attrs = {0, 1, 2};
-  } else if (rand_sample <= 17) {
-    tuple_key_attrs = {5, 8, 9, 10};
-    index_key_attrs = {0, 1, 2, 3};
-  } else if (rand_sample <= 18) {
-    tuple_key_attrs = {6, 10, 11, 12};
-    index_key_attrs = {0, 1, 2, 3};
-  } else if (rand_sample <= 19) {
-    tuple_key_attrs = {7, 8, 10, 11};
-    index_key_attrs = {0, 1, 2, 3};
-  } else if (rand_sample <= 20) {
-    tuple_key_attrs = {7, 8, 9, 11, 12, 13};
-    index_key_attrs = {0, 1, 2, 3, 4, 5};
-  } else if (rand_sample <= 21) {
-    tuple_key_attrs = {4, 9, 10, 11, 12, 13};
-    index_key_attrs = {0, 1, 2, 3, 4, 5};
-  } else if (rand_sample <= 23) {
-    tuple_key_attrs = {6, 7, 8, 9, 10, 11, 12};
-    index_key_attrs = {0, 1, 2, 3, 4, 5, 6};
-  } else {
-    tuple_key_attrs = {1, 3, 5, 6, 7, 8, 11, 12};
-    index_key_attrs = {0, 1, 2, 3, 4, 5, 6, 7};
-  }
+  auto predicate = GetPredicate();
+  tuple_key_attrs = predicate;
+  index_key_attrs = {0, 1, 2};
 
   UNUSED_ATTRIBUTE std::stringstream os;
   os << "Complex Update :: ";
@@ -1341,8 +1174,14 @@ void RunSDBenchTest() {
 
   std::thread index_builder;
 
+  // seed generator
+  srand(generator_seed);
+
   // Generate sequence
   GenerateSequence(state.attribute_count);
+
+  // Generate distribution
+  GeneratePredicateDistribution();
 
   CreateAndLoadTable((LayoutType)state.layout_mode);
 
@@ -1379,18 +1218,22 @@ void RunSDBenchTest() {
     return;
   }
 
-  // seed generator
-  srand(generator_seed);
-
   // run desired number of ops
+  oid_t phase_count = 0;
   for (oid_t op_itr = 0; op_itr < state.total_ops; op_itr++) {
 
     // set phase length (NOTE: uneven across phases)
     size_t minimum_op_count = (original_phase_length/5);
     size_t rest_op_count = original_phase_length - minimum_op_count;
     size_t current_phase_length = minimum_op_count + rand() % rest_op_count;
+    if(current_phase_length > state.total_ops - op_itr){
+      current_phase_length = state.total_ops - op_itr;
+    }
+
     state.phase_length = current_phase_length;
     op_itr += current_phase_length;
+    phase_count++;
+
 
     double rand_sample = (double)rand() / RAND_MAX;
 
@@ -1430,6 +1273,7 @@ void RunSDBenchTest() {
   // Reset
   query_itr = 0;
 
+  LOG_INFO("Average phase length : %.0lf", (double)state.total_ops/phase_count);
   LOG_INFO("Duration : %.2lf", total_duration);
 
   out.close();
