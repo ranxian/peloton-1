@@ -1220,7 +1220,7 @@ void RunSDBenchTest() {
 
   // run desired number of ops
   oid_t phase_count = 0;
-  for (oid_t op_itr = 0; op_itr < state.total_ops; op_itr++) {
+  for (oid_t op_itr = 0; op_itr < state.total_ops; ) {
 
     // set phase length (NOTE: uneven across phases)
     size_t minimum_op_count = (original_phase_length/5);
@@ -1233,7 +1233,6 @@ void RunSDBenchTest() {
     state.phase_length = current_phase_length;
     op_itr += current_phase_length;
     phase_count++;
-
 
     double rand_sample = (double)rand() / RAND_MAX;
 
