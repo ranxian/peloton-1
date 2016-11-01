@@ -603,14 +603,14 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   if (state.tuner_analyze_type == TUNER_ANALYZE_TYPE_FAST) {
     state.analyze_sample_count_threshold = 5;
   } else if (state.tuner_analyze_type == TUNER_ANALYZE_TYPE_SLOW) {
-    state.analyze_sample_count_threshold = 200;
+    state.analyze_sample_count_threshold = 50;
   }
 
   // Setup tuner build rate
   if (state.tuner_build_type == TUNER_BUILD_TYPE_FAST) {
     state.build_sample_count_threshold = 5;
   } else if (state.tuner_build_type == TUNER_BUILD_TYPE_SLOW) {
-    state.build_sample_count_threshold = 200;
+    state.build_sample_count_threshold = 50;
   }
 
   // Setup tile groups indexed per iteration based on scale factor

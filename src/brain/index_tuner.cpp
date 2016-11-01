@@ -460,6 +460,8 @@ void IndexTuner::IndexTuneHelper(storage::DataTable* table) {
   // Process all samples in table
   auto& samples = table->GetIndexSamples();
   auto sample_count = samples.size();
+  auto max_sample_threshold = std::max(build_sample_count_threshold,
+                                       analyze_sample_count_threshold);
 
   // Check if we have sufficient number of samples for build
   if (sample_count >= build_sample_count_threshold) {
@@ -473,8 +475,12 @@ void IndexTuner::IndexTuneHelper(storage::DataTable* table) {
 
     // Add required indices
     Analyze(table);
+  }
 
-    // Clear all current samples in table
+  // Check if it is time to clear
+  if (sample_count >= max_sample_threshold) {
+
+    // Clear samples
     table->ClearIndexSamples();
   }
 
