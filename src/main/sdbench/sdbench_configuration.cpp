@@ -28,11 +28,9 @@ void Usage() {
       "   -b --convergence_query_threshold   :  # of queries for convergence\n"
       "   -c --query_complexity_type         :  Complexity of query\n"
       "   -d --variability_threshold         :  Variability threshold\n"
-      "   -e --index_usage_type              :  Types of indexes used\n"
-      "   -f --index_analyze_type            :  Tuner's index analyze speed\n"
-      "   -g --index_build_type              :  Tuner's index build speed\n"
+      "   -e --tuner_mode_type               :  Tuner mode\n"
+      "   -g --tuples_per_tg                 :  # of tuples per tilegroup\n"
       "   -h --help                          :  Print help message\n"
-      "   -i --tuples_per_tg                 :  # of tuples per tilegroup\n"
       "   -k --scale-factor                  :  # of tile groups\n"
       "   -l --layout                        :  Layout\n"
       "   -m --max_tile_groups_indexed       :  Max tile groups indexed\n"
@@ -55,10 +53,8 @@ static struct option opts[] = {
     {"convergence_query_threshold", optional_argument, NULL, 'b'},
     {"query_complexity_type", optional_argument, NULL, 'c'},
     {"variability_threshold", optional_argument, NULL, 'd'},
-    {"index_usage_type", optional_argument, NULL, 'e'},
-    {"index_analyze_type", optional_argument, NULL, 'f'},
-    {"index_build_type", optional_argument, NULL, 'g'},
-    {"tuples_per_tg", optional_argument, NULL, 'i'},
+    {"tuner_mode_type", optional_argument, NULL, 'e'},
+    {"tuples_per_tg", optional_argument, NULL, 'g'},
     {"scale-factor", optional_argument, NULL, 'k'},
     {"layout", optional_argument, NULL, 'l'},
     {"max_tile_groups_indexed", optional_argument, NULL, 'm'},
@@ -84,6 +80,37 @@ void GenerateSequence(oid_t column_count) {
     sdbench_column_ids.push_back(column_id);
 
   std::random_shuffle(sdbench_column_ids.begin(), sdbench_column_ids.end());
+}
+
+static void ValidateTunerModeType(const configuration &state) {
+  if (state.tuner_mode_type < 1 || state.tuner_mode_type > 6) {
+    LOG_ERROR("Invalid tuner_mode_type :: %d", state.tuner_mode_type);
+    exit(EXIT_FAILURE);
+  } else {
+    switch (state.tuner_mode_type) {
+      case TUNER_MODE_TYPE_AGG_FAST:
+        LOG_INFO("%s : AGG-FAST", "tuner_mode_type ");
+        break;
+      case TUNER_MODE_TYPE_AGG_SLOW:
+        LOG_INFO("%s : AGG-SLOW", "tuner_mode_type ");
+        break;
+      case TUNER_MODE_TYPE_CON_FAST:
+        LOG_INFO("%s : CON-FAST", "tuner_mode_type ");
+        break;
+      case TUNER_MODE_TYPE_CON_SLOW:
+        LOG_INFO("%s : CON-SLOW", "tuner_mode_type ");
+        break;
+      case TUNER_MODE_TYPE_FULL:
+        LOG_INFO("%s : FULL", "tuner_mode_type ");
+        break;
+      case TUNER_MODE_TYPE_NEVER:
+        LOG_INFO("%s : NEVER", "tuner_mode_type ");
+        break;
+
+      default:
+        break;
+    }
+  }
 }
 
 static void ValidateTunerBuildType(const configuration &state) {
@@ -424,12 +451,12 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   while (1) {
     int idx = 0;
     int c = getopt_long(
-        argc, argv, "a:b:c:d:e:f:g:hi:k:l:m:o:p:q:s:t:u:v:w:x:y:z:", opts, &idx);
+        argc, argv, "a:b:c:d:e:g:hk:l:m:o:p:q:s:t:u:v:w:x:y:z:", opts, &idx);
 
     if (c == -1) break;
 
     switch (c) {
-      // AVAILABLE FLAGS: nrABCDEFGHIJKLMNOPQRSTUVWXYZ
+      // AVAILABLE FLAGS: finrABCDEFGHIJKLMNOPQRSTUVWXYZ
       case 'a':
         state.attribute_count = atoi(optarg);
         break;
@@ -443,21 +470,15 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
         state.variability_threshold = atoi(optarg);
         break;
       case 'e':
-        state.index_usage_type = (IndexUsageType)atoi(optarg);
-        break;
-      case 'f':
-        state.tuner_analyze_type = (TunerAnalyzeType)atoi(optarg);
+        state.tuner_mode_type = (TunerModeType)atoi(optarg);
         break;
       case 'g':
-        state.tuner_build_type = (TunerBuildType)atoi(optarg);
+        state.tuples_per_tilegroup = atoi(optarg);
         break;
       case 'h':
         Usage();
         break;
 
-      case 'i':
-        state.tuples_per_tilegroup = atoi(optarg);
-        break;
       case 'k':
         state.scale_factor = atoi(optarg);
         break;
@@ -508,6 +529,55 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
         LOG_ERROR("Unknown option: -%c-", c);
         Usage();
     }
+  }
+
+  ValidateTunerModeType(state);
+
+  /// Setup index usage type, tuner analyze type, and tuner build type
+  switch (state.tuner_mode_type) {
+    case TUNER_MODE_TYPE_AGG_FAST: {
+      // tuner analyze fast, build fast
+      state.index_usage_type = INDEX_USAGE_TYPE_PARTIAL;
+      state.tuner_analyze_type = TUNER_ANALYZE_TYPE_FAST;
+      state.tuner_build_type = TUNER_BUILD_TYPE_FAST;
+      break;
+    }
+    case TUNER_MODE_TYPE_AGG_SLOW: {
+      // tuner analyze fast, build slow
+      state.index_usage_type = INDEX_USAGE_TYPE_PARTIAL;
+      state.tuner_analyze_type = TUNER_ANALYZE_TYPE_FAST;
+      state.tuner_build_type = TUNER_BUILD_TYPE_SLOW;
+      break;
+    }
+    case TUNER_MODE_TYPE_CON_FAST: {
+      // tuner analyze slow, build fast
+      state.index_usage_type = INDEX_USAGE_TYPE_PARTIAL;
+      state.tuner_analyze_type = TUNER_ANALYZE_TYPE_SLOW;
+      state.tuner_build_type = TUNER_BUILD_TYPE_FAST;
+      break;
+    }
+    case TUNER_MODE_TYPE_CON_SLOW: {
+      // tuner analyze slow, build slow
+      state.index_usage_type = INDEX_USAGE_TYPE_PARTIAL;
+      state.tuner_analyze_type = TUNER_ANALYZE_TYPE_SLOW;
+      state.tuner_build_type = TUNER_BUILD_TYPE_SLOW;
+      break;
+    }
+    case TUNER_MODE_TYPE_FULL: {
+      // use only fully materialized indexes
+      state.index_usage_type = INDEX_USAGE_TYPE_FULL;
+      state.tuner_build_type = TUNER_BUILD_TYPE_SLOW;
+      break;
+    }
+    case TUNER_MODE_TYPE_NEVER: {
+      // never use ad-hoc indexes
+      state.index_usage_type = INDEX_USAGE_TYPE_NEVER;
+      break;
+    }
+
+    default:
+      LOG_ERROR("Invalid index usage type");
+      break;
   }
 
   ValidateIndexUsageType(state);

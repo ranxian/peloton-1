@@ -24,6 +24,20 @@ namespace peloton {
 namespace benchmark {
 namespace sdbench {
 
+enum TunerModeType {
+  TUNER_MODE_TYPE_INVALID = 0,
+
+  TUNER_MODE_TYPE_AGG_FAST = 1, // tuner analyze fast, build fast
+  TUNER_MODE_TYPE_AGG_SLOW = 2, // tuner analyze fast, build slow
+  TUNER_MODE_TYPE_CON_FAST = 3, // tuner analyze slow, build fast
+  TUNER_MODE_TYPE_CON_SLOW = 4, // tuner analyze slow, build slow
+
+  TUNER_MODE_TYPE_FULL = 5,     // use only fully materialized indexes
+
+  TUNER_MODE_TYPE_NEVER = 6     // never use ad-hoc indexes
+
+};
+
 enum TunerAnalyzeType{
   TUNER_ANALYZE_TYPE_INVALID = 0,
 
@@ -44,8 +58,8 @@ enum IndexUsageType {
   INDEX_USAGE_TYPE_INVALID = 0,
 
   INDEX_USAGE_TYPE_PARTIAL = 1,    // use partially materialized indexes
-  INDEX_USAGE_TYPE_NEVER = 2,      // never use indexes
-  INDEX_USAGE_TYPE_FULL = 3,       // use only fully materialized indexes
+  INDEX_USAGE_TYPE_FULL = 2,       // use only fully materialized indexes
+  INDEX_USAGE_TYPE_NEVER = 3,      // never use ad-hoc indexes
 
 };
 
@@ -79,6 +93,10 @@ static const int generator_seed = 50;
 
 class configuration {
  public:
+  // Tuner mode --
+  // determines tuner_build_type, tuner_analyze_type, and index_usage_type
+  TunerModeType tuner_mode_type;
+
   // Build speed
   TunerBuildType tuner_build_type;
 
