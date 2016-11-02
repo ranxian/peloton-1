@@ -307,8 +307,8 @@ oid_t query_itr;
 double total_duration = 0;
 
 UNUSED_ATTRIBUTE static void WriteOutput(double duration) {
-  // Convert to seconds
-  duration /= 1000;
+  // Convert to ms
+  duration *= 1000;
 
   auto index_count = index_tuner.GetIndexCount();
 
