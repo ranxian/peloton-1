@@ -498,8 +498,8 @@ static void RunSimpleQuery() {
   std::vector<oid_t> tuple_key_attrs;
   std::vector<oid_t> index_key_attrs;
 
-  auto predicate = GetPredicate();
-  auto first_attribute = predicate[0];
+  oid_t predicate = rand() % state.attribute_count;
+  oid_t first_attribute = predicate;
   tuple_key_attrs = {first_attribute};
   index_key_attrs = {0};
 
@@ -998,8 +998,8 @@ static void RunSimpleUpdate() {
 
   update_attrs = {15, 16, 17};
 
-  auto predicate = GetPredicate();
-  auto first_attribute = predicate[0];
+  oid_t predicate = rand() % state.attribute_count;
+  oid_t first_attribute = predicate;
   tuple_key_attrs = {first_attribute};
   index_key_attrs = {0};
 
@@ -1173,7 +1173,12 @@ static bool HasIndexConfigurationConverged() {
 
 void RunSDBenchTest() {
   // Setup index tuner
-  index_tuner.SetBuildSampleCountThreshold(state.build_sample_count_threshold);
+  index_tuner.SetAnalyzeSampleCountThreshold(
+      state.analyze_sample_count_threshold);
+  index_tuner.SetTileGroupsIndexedPerIteration(
+      state.tile_groups_indexed_per_iteration);
+  index_tuner.SetDurationBetweenPauses(state.duration_between_pauses);
+  index_tuner.SetDurationOfPause(state.duration_of_pause);
   index_tuner.SetAnalyzeSampleCountThreshold(
       state.analyze_sample_count_threshold);
   index_tuner.SetTileGroupsIndexedPerIteration(
@@ -1181,6 +1186,8 @@ void RunSDBenchTest() {
   index_tuner.SetIndexUtilityThreshold(state.index_utility_threshold);
   index_tuner.SetIndexCountThreshold(state.index_count_threshold);
   index_tuner.SetWriteRatioThreshold(state.write_ratio_threshold);
+  index_tuner.SetTileGroupsIndexedPerIteration(
+      state.tile_groups_indexed_per_iteration);
 
   std::thread index_builder;
 

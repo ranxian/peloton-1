@@ -24,28 +24,32 @@ void Usage() {
   LOG_INFO(
       "\n"
       "Command line options : sdbench <options>\n"
-      "   -a --attribute_count               :  # of attributes\n"
-      "   -b --convergence_query_threshold   :  # of queries for convergence\n"
-      "   -c --query_complexity_type         :  Complexity of query\n"
-      "   -d --variability_threshold         :  Variability threshold\n"
-      "   -e --tuner_mode_type               :  Tuner mode\n"
-      "   -f --aggreage                      :  Do aggregate or not\n"
-      "   -g --tuples_per_tg                 :  # of tuples per tilegroup\n"
-      "   -h --help                          :  Print help message\n"
-      "   -k --scale-factor                  :  # of tile groups\n"
-      "   -l --layout                        :  Layout\n"
-      "   -m --max_tile_groups_indexed       :  Max tile groups indexed\n"
-      "   -o --convergence                   :  Convergence\n"
-      "   -p --projectivity                  :  Projectivity\n"
-      "   -q --total_ops                     :  # of operations\n"
-      "   -s --selectivity                   :  Selectivity\n"
-      "   -t --phase_length                  :  Length of a phase\n"
-      "   -u --write_complexity_type         :  Complexity of write\n"
-      "   -v --verbose                       :  Output verbosity\n"
-      "   -w --write_ratio                   :  Fraction of writes\n"
-      "   -x --index_count_threshold         :  Index count threshold\n"
-      "   -y --index_utility_threshold       :  Index utility threshold\n"
-      "   -z --write_ratio_threshold         :  Write ratio threshold\n");
+      "   -a --attribute_count                :  # of attributes\n"
+      "   -b --convergence_query_threshold    :  # of queries for convergence\n"
+      "   -c --query_complexity_type          :  Complexity of query\n"
+      "   -d --variability_threshold          :  Variability threshold\n"
+      "   -e --index_usage_type               :  Index usage type\n"
+      "   -f --analyze_sample_count_threshold :  Analyze speed \n"
+      "   -g --tuples_per_tg                  :  # of tuples per tilegroup\n"
+      "   -h --help                           :  Print help message\n"
+      "   -i --duration_between_pauses        :  Duration between pauses\n"
+      "   -j --duration_of_pause              :  Duration of pause\n"
+      "   -k --scale-factor                   :  # of tile groups\n"
+      "   -l --layout                         :  Layout\n"
+      "   -m --max_tile_groups_indexed        :  Max tile groups indexed\n"
+      "   -o --convergence                    :  Convergence\n"
+      "   -p --projectivity                   :  Projectivity\n"
+      "   -q --total_ops                      :  # of operations\n"
+      "   -r --aggreage                       :  Do aggregate or not\n"
+      "   -s --selectivity                    :  Selectivity\n"
+      "   -t --phase_length                   :  Length of a phase\n"
+      "   -u --write_complexity_type          :  Complexity of write\n"
+      "   -v --verbose                        :  Output verbosity\n"
+      "   -w --write_ratio                    :  Fraction of writes\n"
+      "   -x --index_count_threshold          :  Index count threshold\n"
+      "   -y --index_utility_threshold        :  Index utility threshold\n"
+      "   -z --write_ratio_threshold          :  Write ratio threshold\n");
+
   exit(EXIT_FAILURE);
 }
 
@@ -56,6 +60,8 @@ static struct option opts[] = {
     {"variability_threshold", optional_argument, NULL, 'd'},
     {"tuner_mode_type", optional_argument, NULL, 'e'},
     {"tuples_per_tg", optional_argument, NULL, 'g'},
+    {"duration_between_pauses", optional_argument, NULL, 'i'},
+    {"duration_of_pause", optional_argument, NULL, 'j'},
     {"scale-factor", optional_argument, NULL, 'k'},
     {"layout", optional_argument, NULL, 'l'},
     {"max_tile_groups_indexed", optional_argument, NULL, 'm'},
@@ -83,81 +89,20 @@ void GenerateSequence(oid_t column_count) {
   std::random_shuffle(sdbench_column_ids.begin(), sdbench_column_ids.end());
 }
 
-static void ValidateTunerModeType(const configuration &state) {
-  if (state.tuner_mode_type < 1 || state.tuner_mode_type > 6) {
-    LOG_ERROR("Invalid tuner_mode_type :: %d", state.tuner_mode_type);
-    exit(EXIT_FAILURE);
-  } else {
-    switch (state.tuner_mode_type) {
-      case TUNER_MODE_TYPE_AGG_FAST:
-        LOG_INFO("%s : AGG-FAST", "tuner_mode_type ");
-        break;
-      case TUNER_MODE_TYPE_AGG_SLOW:
-        LOG_INFO("%s : AGG-SLOW", "tuner_mode_type ");
-        break;
-      case TUNER_MODE_TYPE_CON_FAST:
-        LOG_INFO("%s : CON-FAST", "tuner_mode_type ");
-        break;
-      case TUNER_MODE_TYPE_CON_SLOW:
-        LOG_INFO("%s : CON-SLOW", "tuner_mode_type ");
-        break;
-      case TUNER_MODE_TYPE_FULL:
-        LOG_INFO("%s : FULL", "tuner_mode_type ");
-        break;
-      case TUNER_MODE_TYPE_NEVER:
-        LOG_INFO("%s : NEVER", "tuner_mode_type ");
-        break;
-
-      default:
-        break;
-    }
-  }
-}
-
-static void ValidateTunerBuildType(const configuration &state) {
-  if (state.tuner_build_type < 1 || state.tuner_build_type > 2) {
-    LOG_ERROR("Invalid tuner_build_type :: %d", state.tuner_build_type);
-    exit(EXIT_FAILURE);
-  } else {
-    switch (state.tuner_build_type) {
-      case TUNER_BUILD_TYPE_FAST:
-        LOG_INFO("%s : FAST", "tuner_build_type ");
-        break;
-      case TUNER_BUILD_TYPE_SLOW:
-        LOG_INFO("%s : SLOW", "tuner_build_type ");
-        break;
-      default:
-        break;
-    }
-  }
-}
-
-static void ValidateTunerAnalyzeType(const configuration &state) {
-  if (state.tuner_analyze_type < 1 || state.tuner_analyze_type > 2) {
-    LOG_ERROR("Invalid tuner_analyze_type :: %d", state.tuner_analyze_type);
-    exit(EXIT_FAILURE);
-  } else {
-    switch (state.tuner_analyze_type) {
-      case TUNER_ANALYZE_TYPE_FAST:
-        LOG_INFO("%s : FAST", "tuner_analyze_type ");
-        break;
-      case TUNER_ANALYZE_TYPE_SLOW:
-        LOG_INFO("%s : SLOW", "tuner_analyze_type ");
-        break;
-      default:
-        break;
-    }
-  }
-}
-
 static void ValidateIndexUsageType(const configuration &state) {
-  if (state.index_usage_type < 1 || state.index_usage_type > 3) {
+  if (state.index_usage_type < 1 || state.index_usage_type > 5) {
     LOG_ERROR("Invalid index_usage_type :: %d", state.index_usage_type);
     exit(EXIT_FAILURE);
   } else {
     switch (state.index_usage_type) {
-      case INDEX_USAGE_TYPE_PARTIAL:
-        LOG_INFO("%s : PARTIAL", "index_usage_type ");
+      case INDEX_USAGE_TYPE_PARTIAL_FAST:
+        LOG_INFO("%s : PARTIAL_FAST", "index_usage_type ");
+        break;
+      case INDEX_USAGE_TYPE_PARTIAL_MEDIUM:
+        LOG_INFO("%s : PARTIAL_MEDIUM", "index_usage_type ");
+        break;
+      case INDEX_USAGE_TYPE_PARTIAL_SLOW:
+        LOG_INFO("%s : PARTIAL_SLOW", "index_usage_type ");
         break;
       case INDEX_USAGE_TYPE_NEVER:
         LOG_INFO("%s : NEVER", "index_usage_type ");
@@ -315,15 +260,23 @@ static void ValidateTuplesPerTileGroup(const configuration &state) {
   LOG_INFO("%s : %d", "tuples_per_tilegroup", state.tuples_per_tilegroup);
 }
 
-static void ValidateBuildSampleCountThreshold(const configuration &state) {
-  if (state.build_sample_count_threshold <= 0) {
-    LOG_ERROR("Invalid build_sample_count_threshold :: %u",
-              state.build_sample_count_threshold);
+static void ValidateDurationBetweenPauses(const configuration &state) {
+  if (state.duration_between_pauses <= 0) {
+    LOG_ERROR("Invalid duration_between_pauses :: %u",
+              state.duration_between_pauses);
     exit(EXIT_FAILURE);
   }
 
-  LOG_INFO("%s : %u", "build_sample_count_threshold",
-           state.build_sample_count_threshold);
+  LOG_INFO("%s : %u", "duration_between_pauses", state.duration_between_pauses);
+}
+
+static void ValidateDurationOfPause(const configuration &state) {
+  if (state.duration_of_pause <= 0) {
+    LOG_ERROR("Invalid duration_of_pause :: %u", state.duration_of_pause);
+    exit(EXIT_FAILURE);
+  }
+
+  LOG_INFO("%s : %u", "duration_of_pause", state.duration_of_pause);
 }
 
 static void ValidateAnalyzeSampleCountThreshold(const configuration &state) {
@@ -414,15 +367,13 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   state.verbose = false;
 
   // Default Values
-  state.index_usage_type = INDEX_USAGE_TYPE_PARTIAL;
-  state.tuner_build_type = TUNER_BUILD_TYPE_FAST;
-  state.tuner_analyze_type = TUNER_ANALYZE_TYPE_FAST;
+  state.index_usage_type = INDEX_USAGE_TYPE_PARTIAL_FAST;
   state.query_complexity_type = QUERY_COMPLEXITY_TYPE_SIMPLE;
   state.write_complexity_type = WRITE_COMPLEXITY_TYPE_SIMPLE;
 
   // Scale and attribute count
   state.scale_factor = 100.0;
-  state.attribute_count = 20;
+  state.attribute_count = 200;
 
   state.write_ratio = 0.0;
   state.tuples_per_tilegroup = DEFAULT_TUPLES_PER_TILEGROUP;
@@ -433,20 +384,21 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
 
   // Query parameters
   state.selectivity = 0.001;
-  state.projectivity = 0.1;
+  state.projectivity = 0.01;
 
   // Layout parameter
   state.layout_mode = LAYOUT_TYPE_ROW;
 
   // Learning rate
-  state.build_sample_count_threshold = 100;
   state.analyze_sample_count_threshold = 100;
+  state.duration_between_pauses = 10;
+  state.duration_of_pause = 100;
   state.tile_groups_indexed_per_iteration = 10;
 
   // Convergence parameters
   state.convergence = false;
   state.convergence_op_threshold = 200;
-  state.aggregate = false;
+  state.aggregate = true;
 
   // Variability parameters
   state.variability_threshold = 10;
@@ -459,13 +411,14 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   // Parse args
   while (1) {
     int idx = 0;
-    int c = getopt_long(
-        argc, argv, "a:b:c:d:e:g:hk:l:m:o:p:q:s:t:u:v:w:x:y:z:f:", opts, &idx);
+    int c = getopt_long(argc, argv,
+                        "a:b:c:d:e:f:g:hi:j:k:l:m:o:p:q:r:s:t:u:v:w:x:y:z:",
+                        opts, &idx);
 
     if (c == -1) break;
 
     switch (c) {
-      // AVAILABLE FLAGS: inrABCDEFGHIJKLMNOPQRSTUVWXYZ
+      // AVAILABLE FLAGS: nABCDEFGHIJKLMNOPQRSTUVWXYZ
       case 'a':
         state.attribute_count = atoi(optarg);
         break;
@@ -479,18 +432,25 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
         state.variability_threshold = atoi(optarg);
         break;
       case 'e':
-        state.tuner_mode_type = (TunerModeType)atoi(optarg);
+        state.index_usage_type = (IndexUsageType)atoi(optarg);
         break;
       case 'f':
-        state.aggregate = atoi(optarg);
+        state.analyze_sample_count_threshold = atoi(optarg);
         break;
       case 'g':
         state.tuples_per_tilegroup = atoi(optarg);
         break;
+
       case 'h':
         Usage();
         break;
 
+      case 'i':
+        state.duration_between_pauses = atoi(optarg);
+        break;
+      case 'j':
+        state.duration_of_pause = atoi(optarg);
+        break;
       case 'k':
         state.scale_factor = atoi(optarg);
         break;
@@ -510,7 +470,9 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
       case 'q':
         state.total_ops = atol(optarg);
         break;
-
+      case 'r':
+        state.aggregate = atoi(optarg);
+        break;
       case 's':
         state.selectivity = atof(optarg);
         break;
@@ -543,59 +505,17 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
     }
   }
 
-  ValidateTunerModeType(state);
+  ValidateIndexUsageType(state);
 
-  /// Setup index usage type, tuner analyze type, and tuner build type
-  switch (state.tuner_mode_type) {
-    case TUNER_MODE_TYPE_AGG_FAST: {
-      // tuner analyze fast, build fast
-      state.index_usage_type = INDEX_USAGE_TYPE_PARTIAL;
-      state.tuner_analyze_type = TUNER_ANALYZE_TYPE_FAST;
-      state.tuner_build_type = TUNER_BUILD_TYPE_FAST;
-      break;
-    }
-    case TUNER_MODE_TYPE_AGG_SLOW: {
-      // tuner analyze fast, build slow
-      state.index_usage_type = INDEX_USAGE_TYPE_PARTIAL;
-      state.tuner_analyze_type = TUNER_ANALYZE_TYPE_FAST;
-      state.tuner_build_type = TUNER_BUILD_TYPE_SLOW;
-      break;
-    }
-    case TUNER_MODE_TYPE_CON_FAST: {
-      // tuner analyze slow, build fast
-      state.index_usage_type = INDEX_USAGE_TYPE_PARTIAL;
-      state.tuner_analyze_type = TUNER_ANALYZE_TYPE_SLOW;
-      state.tuner_build_type = TUNER_BUILD_TYPE_FAST;
-      break;
-    }
-    case TUNER_MODE_TYPE_CON_SLOW: {
-      // tuner analyze slow, build slow
-      state.index_usage_type = INDEX_USAGE_TYPE_PARTIAL;
-      state.tuner_analyze_type = TUNER_ANALYZE_TYPE_SLOW;
-      state.tuner_build_type = TUNER_BUILD_TYPE_SLOW;
-      break;
-    }
-    case TUNER_MODE_TYPE_FULL: {
-      // use only fully materialized indexes
-      state.index_usage_type = INDEX_USAGE_TYPE_FULL;
-      state.tuner_build_type = TUNER_BUILD_TYPE_SLOW;
-      state.tuner_analyze_type = TUNER_ANALYZE_TYPE_SLOW;
-      break;
-    }
-    case TUNER_MODE_TYPE_NEVER: {
-      // never use ad-hoc indexes
-      state.index_usage_type = INDEX_USAGE_TYPE_NEVER;
-      break;
-    }
-
-    default:
-      LOG_ERROR("Invalid index usage type");
-      break;
+  /// Set duration between pauses based on index usage type
+  if (state.index_usage_type == INDEX_USAGE_TYPE_PARTIAL_FAST) {
+    state.duration_between_pauses = 10000;
+  } else if (state.index_usage_type == INDEX_USAGE_TYPE_PARTIAL_MEDIUM) {
+    state.duration_between_pauses = 1000;
+  } else if (state.index_usage_type == INDEX_USAGE_TYPE_PARTIAL_SLOW) {
+    state.duration_between_pauses = 100;
   }
 
-  ValidateIndexUsageType(state);
-  ValidateTunerAnalyzeType(state);
-  ValidateTunerBuildType(state);
   ValidateWriteRatio(state);
   ValidateQueryComplexityType(state);
   ValidateWriteComplexityType(state);
@@ -610,25 +530,8 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   ValidateIndexCountThreshold(state);
   ValidateIndexUtilityThreshold(state);
   ValidateWriteRatioThreshold(state);
-
-  // Setup tuner analyze rate
-  if (state.tuner_analyze_type == TUNER_ANALYZE_TYPE_FAST) {
-    state.analyze_sample_count_threshold = 5;
-  } else if (state.tuner_analyze_type == TUNER_ANALYZE_TYPE_SLOW) {
-    state.analyze_sample_count_threshold = 50;
-  }
-
-  // Setup tuner build rate
-  if (state.tuner_build_type == TUNER_BUILD_TYPE_FAST) {
-    state.build_sample_count_threshold = 5;
-  } else if (state.tuner_build_type == TUNER_BUILD_TYPE_SLOW) {
-    state.build_sample_count_threshold = 50;
-  }
-
-  // Setup tile groups indexed per iteration based on scale factor
-  state.tile_groups_indexed_per_iteration = state.scale_factor / 10;
-
-  ValidateBuildSampleCountThreshold(state);
+  ValidateDurationOfPause(state);
+  ValidateDurationBetweenPauses(state);
   ValidateAnalyzeSampleCountThreshold(state);
   ValidateMaxTileGroupsIndexed(state);
   ValidateConvergence(state);

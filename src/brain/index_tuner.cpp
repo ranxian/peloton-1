@@ -19,6 +19,7 @@
 #include "catalog/schema.h"
 #include "common/logger.h"
 #include "common/macros.h"
+#include "common/timer.h"
 #include "index/index_factory.h"
 #include "storage/data_table.h"
 #include "storage/tile_group.h"
@@ -453,36 +454,26 @@ void IndexTuner::Analyze(storage::DataTable* table) {
   UpdateIndexUtility(table, sample_frequency_entry_list);
 
   // Display index information
-  //PrintIndexInformation(table);
+  PrintIndexInformation(table);
 }
 
 void IndexTuner::IndexTuneHelper(storage::DataTable* table) {
   // Process all samples in table
   auto& samples = table->GetIndexSamples();
   auto sample_count = samples.size();
-  auto max_sample_threshold = std::max(build_sample_count_threshold,
-                                       analyze_sample_count_threshold);
-
-  // Check if we have sufficient number of samples for build
-  if (sample_count >= build_sample_count_threshold) {
-
-    // Build desired indices
-    BuildIndices(table);
-  }
 
   // Check if we have sufficient number of samples for build
   if (sample_count >= analyze_sample_count_threshold) {
 
     // Add required indices
     Analyze(table);
-  }
-
-  // Check if it is time to clear
-  if (sample_count >= max_sample_threshold) {
 
     // Clear samples
     table->ClearIndexSamples();
   }
+
+  // Build desired indices
+  BuildIndices(table);
 
 }
 
@@ -503,17 +494,31 @@ oid_t IndexTuner::GetIndexCount() const {
 void IndexTuner::Tune() {
   LOG_TRACE("Begin tuning");
 
+  Timer<std::milli> pause_timer;
+  pause_timer.Start();
+
   // Continue till signal is not false
   while (index_tuning_stop == false) {
+
     // Go over all tables
     for (auto table : tables) {
       // Update indices periodically
       IndexTuneHelper(table);
     }
 
-    // Sleep a bit
-    // std::this_thread::sleep_for(std::chrono::microseconds(sleep_duration));
+    pause_timer.Stop();
+    auto duration = pause_timer.GetDuration();
+
+    // Sleep a bit if needed
+    if(duration > duration_between_pauses){
+      LOG_INFO("TUNER PAUSE : %.0lf", duration);
+      std::this_thread::sleep_for(std::chrono::milliseconds(duration_of_pause));
+      pause_timer.Reset();
+      pause_timer.Start();
+    }
+
   }
+
 }
 
 void IndexTuner::Stop() {
