@@ -29,6 +29,7 @@ void Usage() {
       "   -c --query_complexity_type         :  Complexity of query\n"
       "   -d --variability_threshold         :  Variability threshold\n"
       "   -e --tuner_mode_type               :  Tuner mode\n"
+      "   -f --aggreage                      :  Do aggregate or not\n"
       "   -g --tuples_per_tg                 :  # of tuples per tilegroup\n"
       "   -h --help                          :  Print help message\n"
       "   -k --scale-factor                  :  # of tile groups\n"
@@ -321,7 +322,8 @@ static void ValidateBuildSampleCountThreshold(const configuration &state) {
     exit(EXIT_FAILURE);
   }
 
-  LOG_INFO("%s : %u", "build_sample_count_threshold", state.build_sample_count_threshold);
+  LOG_INFO("%s : %u", "build_sample_count_threshold",
+           state.build_sample_count_threshold);
 }
 
 static void ValidateAnalyzeSampleCountThreshold(const configuration &state) {
@@ -331,7 +333,8 @@ static void ValidateAnalyzeSampleCountThreshold(const configuration &state) {
     exit(EXIT_FAILURE);
   }
 
-  LOG_INFO("%s : %u", "analyze_sample_count_threshold", state.analyze_sample_count_threshold);
+  LOG_INFO("%s : %u", "analyze_sample_count_threshold",
+           state.analyze_sample_count_threshold);
 }
 
 static void ValidateMaxTileGroupsIndexed(const configuration &state) {
@@ -341,7 +344,8 @@ static void ValidateMaxTileGroupsIndexed(const configuration &state) {
     exit(EXIT_FAILURE);
   }
 
-  LOG_INFO("%s : %u", "max_tile_groups_indexed", state.tile_groups_indexed_per_iteration);
+  LOG_INFO("%s : %u", "max_tile_groups_indexed",
+           state.tile_groups_indexed_per_iteration);
 }
 
 static void ValidateConvergence(const configuration &state) {
@@ -402,6 +406,10 @@ static void ValidateWriteRatioThreshold(const configuration &state) {
   LOG_INFO("%s : %.2lf", "write_ratio_threshold", state.write_ratio_threshold);
 }
 
+static void ValidateAggregate(const configuration &state) {
+  LOG_INFO("%s : %d", "aggregate", state.aggregate);
+}
+
 void ParseArguments(int argc, char *argv[], configuration &state) {
   state.verbose = false;
 
@@ -438,6 +446,7 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   // Convergence parameters
   state.convergence = false;
   state.convergence_op_threshold = 200;
+  state.aggregate = false;
 
   // Variability parameters
   state.variability_threshold = 10;
@@ -451,12 +460,12 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   while (1) {
     int idx = 0;
     int c = getopt_long(
-        argc, argv, "a:b:c:d:e:g:hk:l:m:o:p:q:s:t:u:v:w:x:y:z:", opts, &idx);
+        argc, argv, "a:b:c:d:e:g:hk:l:m:o:p:q:s:t:u:v:w:x:y:z:f:", opts, &idx);
 
     if (c == -1) break;
 
     switch (c) {
-      // AVAILABLE FLAGS: finrABCDEFGHIJKLMNOPQRSTUVWXYZ
+      // AVAILABLE FLAGS: inrABCDEFGHIJKLMNOPQRSTUVWXYZ
       case 'a':
         state.attribute_count = atoi(optarg);
         break;
@@ -471,6 +480,9 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
         break;
       case 'e':
         state.tuner_mode_type = (TunerModeType)atoi(optarg);
+        break;
+      case 'f':
+        state.aggregate = atoi(optarg);
         break;
       case 'g':
         state.tuples_per_tilegroup = atoi(optarg);
@@ -622,8 +634,7 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   ValidateConvergence(state);
   ValidateQueryConvergenceThreshold(state);
   ValidateVariabilityThreshold(state);
-
-
+  ValidateAggregate(state);
 }
 
 }  // namespace sdbench
