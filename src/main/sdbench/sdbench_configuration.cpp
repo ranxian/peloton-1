@@ -360,7 +360,7 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
 
   // Scale and attribute count
   state.scale_factor = 100.0;
-  state.attribute_count = 20;
+  state.attribute_count = 200;
 
   state.write_ratio = 0.0;
   state.tuples_per_tilegroup = DEFAULT_TUPLES_PER_TILEGROUP;
@@ -371,7 +371,7 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
 
   // Query parameters
   state.selectivity = 0.001;
-  state.projectivity = 0.1;
+  state.projectivity = 0.01;
 
   // Layout parameter
   state.layout_mode = LAYOUT_TYPE_ROW;

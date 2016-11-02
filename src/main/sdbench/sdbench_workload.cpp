@@ -499,8 +499,8 @@ static void RunSimpleQuery() {
   std::vector<oid_t> tuple_key_attrs;
   std::vector<oid_t> index_key_attrs;
 
-  auto predicate = GetPredicate();
-  auto first_attribute = predicate[0];
+  oid_t predicate = rand() % state.attribute_count;
+  oid_t first_attribute = predicate;
   tuple_key_attrs = {first_attribute};
   index_key_attrs = {0};
 
@@ -989,8 +989,8 @@ static void RunSimpleUpdate() {
 
   update_attrs = {15, 16, 17};
 
-  auto predicate = GetPredicate();
-  auto first_attribute = predicate[0];
+  oid_t predicate = rand() % state.attribute_count;
+  oid_t first_attribute = predicate;
   tuple_key_attrs = {first_attribute};
   index_key_attrs = {0};
 
