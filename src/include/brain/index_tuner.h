@@ -70,8 +70,8 @@ class IndexTuner {
   // Clear list
   void ClearTables();
 
-  void SetIterationsBetweenPauses(const oid_t& iterations_between_pauses_){
-    iterations_between_pauses = iterations_between_pauses_;
+  void SetDurationBetweenPauses(const oid_t& duration_between_pauses_){
+    duration_between_pauses = duration_between_pauses_;
   }
 
   void SetDurationOfPause(const oid_t& duration_of_pause_){
@@ -134,8 +134,8 @@ class IndexTuner {
 
   // Threshold sample count
 
-  // iterations between pauses
-  oid_t iterations_between_pauses = 1000;
+  // duration between pauses
+  oid_t duration_between_pauses = 1000;
 
   // duration of pause (in ms)
   oid_t duration_of_pause = 100;

@@ -494,7 +494,8 @@ oid_t IndexTuner::GetIndexCount() const {
 void IndexTuner::Tune() {
   LOG_TRACE("Begin tuning");
 
-  oid_t tuner_iterations = 0;
+  Timer<std::milli> pause_timer;
+  pause_timer.Start();
 
   // Continue till signal is not false
   while (index_tuning_stop == false) {
@@ -505,13 +506,15 @@ void IndexTuner::Tune() {
       IndexTuneHelper(table);
     }
 
-    tuner_iterations++;
+    pause_timer.Stop();
+    auto duration = pause_timer.GetDuration();
 
     // Sleep a bit if needed
-    if(tuner_iterations > iterations_between_pauses){
-      LOG_INFO("TUNER PAUSE");
+    if(duration > duration_between_pauses){
+      LOG_INFO("TUNER PAUSE : %.0lf", duration);
       std::this_thread::sleep_for(std::chrono::milliseconds(duration_of_pause));
-      tuner_iterations = 0;
+      pause_timer.Reset();
+      pause_timer.Start();
     }
 
   }

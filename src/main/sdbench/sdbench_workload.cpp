@@ -1165,7 +1165,7 @@ static bool HasIndexConfigurationConverged() {
 
 void RunSDBenchTest() {
   // Setup index tuner
-  index_tuner.SetIterationsBetweenPauses(state.iterations_between_pauses);
+  index_tuner.SetDurationBetweenPauses(state.duration_between_pauses);
   index_tuner.SetDurationOfPause(state.duration_of_pause);
   index_tuner.SetAnalyzeSampleCountThreshold(state.analyze_sample_count_threshold);
   index_tuner.SetTileGroupsIndexedPerIteration(state.tile_groups_indexed_per_iteration);
