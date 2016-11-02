@@ -24,36 +24,6 @@ namespace peloton {
 namespace benchmark {
 namespace sdbench {
 
-enum TunerModeType {
-  TUNER_MODE_TYPE_INVALID = 0,
-
-  TUNER_MODE_TYPE_AGG_FAST = 1, // tuner analyze fast, build fast
-  TUNER_MODE_TYPE_AGG_SLOW = 2, // tuner analyze fast, build slow
-  TUNER_MODE_TYPE_CON_FAST = 3, // tuner analyze slow, build fast
-  TUNER_MODE_TYPE_CON_SLOW = 4, // tuner analyze slow, build slow
-
-  TUNER_MODE_TYPE_FULL = 5,     // use only fully materialized indexes
-
-  TUNER_MODE_TYPE_NEVER = 6     // never use ad-hoc indexes
-
-};
-
-enum TunerAnalyzeType{
-  TUNER_ANALYZE_TYPE_INVALID = 0,
-
-  TUNER_ANALYZE_TYPE_FAST = 1,  // tuner analyze fast
-  TUNER_ANALYZE_TYPE_SLOW = 2,  // tuner analyze slow
-
-};
-
-enum TunerBuildType {
-  TUNER_BUILD_TYPE_INVALID = 0,
-
-  TUNER_BUILD_TYPE_FAST = 1,      // tuner build fast
-  TUNER_BUILD_TYPE_SLOW = 2,      // tuner build slow
-
-};
-
 enum IndexUsageType {
   INDEX_USAGE_TYPE_INVALID = 0,
 
@@ -93,16 +63,6 @@ static const int generator_seed = 50;
 
 class configuration {
  public:
-  // Tuner mode --
-  // determines tuner_build_type, tuner_analyze_type, and index_usage_type
-  TunerModeType tuner_mode_type;
-
-  // Build speed
-  TunerBuildType tuner_build_type;
-
-  // Analysis speed
-  TunerAnalyzeType tuner_analyze_type;
-
   // What kind of indexes can be used ?
   IndexUsageType index_usage_type;
 
@@ -144,9 +104,11 @@ class configuration {
 
   // INDEX TUNER PARAMETERS
 
-  // sample count threshold after which
-  // tuner build iteration takes place
-  oid_t build_sample_count_threshold;
+  // duration between pauses
+  oid_t duration_between_pauses;
+
+  // duration of pause
+  oid_t duration_of_pause;
 
   // sample count threshold after which
   // tuner analyze iteration takes place

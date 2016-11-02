@@ -70,8 +70,12 @@ class IndexTuner {
   // Clear list
   void ClearTables();
 
-  void SetBuildSampleCountThreshold(const oid_t &build_sample_count_threshold_) {
-    build_sample_count_threshold = build_sample_count_threshold_;
+  void SetDurationBetweenPauses(const oid_t& duration_between_pauses_){
+    duration_between_pauses = duration_between_pauses_;
+  }
+
+  void SetDurationOfPause(const oid_t& duration_of_pause_){
+    duration_of_pause = duration_of_pause_;
   }
 
   void SetAnalyzeSampleCountThreshold(const oid_t &analyze_sample_count_threshold_) {
@@ -128,13 +132,13 @@ class IndexTuner {
   // Tuner Parameters
   //===--------------------------------------------------------------------===//
 
-  // Sleeping period (in us)
-  oid_t sleep_duration = 10;
-
   // Threshold sample count
 
-  // frequency with which index building happens
-  oid_t build_sample_count_threshold = 10;
+  // duration between pauses (in ms)
+  oid_t duration_between_pauses = 1000;
+
+  // duration of pause (in ms)
+  oid_t duration_of_pause = 100;
 
   // frequency with which index analysis happens
   oid_t analyze_sample_count_threshold = 10;

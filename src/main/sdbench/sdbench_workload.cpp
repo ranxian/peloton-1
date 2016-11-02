@@ -307,8 +307,8 @@ oid_t query_itr;
 double total_duration = 0;
 
 UNUSED_ATTRIBUTE static void WriteOutput(double duration) {
-  // Convert to ms
-  duration *= 1000;
+  // Convert to seconds
+  duration /= 1000;
 
   auto index_count = index_tuner.GetIndexCount();
 
@@ -1165,7 +1165,8 @@ static bool HasIndexConfigurationConverged() {
 
 void RunSDBenchTest() {
   // Setup index tuner
-  index_tuner.SetBuildSampleCountThreshold(state.build_sample_count_threshold);
+  index_tuner.SetDurationBetweenPauses(state.duration_between_pauses);
+  index_tuner.SetDurationOfPause(state.duration_of_pause);
   index_tuner.SetAnalyzeSampleCountThreshold(state.analyze_sample_count_threshold);
   index_tuner.SetTileGroupsIndexedPerIteration(state.tile_groups_indexed_per_iteration);
   index_tuner.SetIndexUtilityThreshold(state.index_utility_threshold);
