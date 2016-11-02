@@ -454,7 +454,7 @@ void IndexTuner::Analyze(storage::DataTable* table) {
   UpdateIndexUtility(table, sample_frequency_entry_list);
 
   // Display index information
-  //PrintIndexInformation(table);
+  PrintIndexInformation(table);
 }
 
 void IndexTuner::IndexTuneHelper(storage::DataTable* table) {
@@ -494,26 +494,24 @@ oid_t IndexTuner::GetIndexCount() const {
 void IndexTuner::Tune() {
   LOG_TRACE("Begin tuning");
 
-  Timer<std::kilo> pause_timer;
-  pause_timer.Start();
+  oid_t tuner_iterations = 0;
 
   // Continue till signal is not false
   while (index_tuning_stop == false) {
+
     // Go over all tables
     for (auto table : tables) {
       // Update indices periodically
       IndexTuneHelper(table);
     }
 
-    pause_timer.Stop();
-    auto duration = pause_timer.GetDuration();
+    tuner_iterations++;
 
     // Sleep a bit if needed
-    if(duration > duration_between_pauses){
-      LOG_INFO("TUNER PAUSE: BETWEEN: %u DURATION: %u", duration_between_pauses, duration_of_pause);
+    if(tuner_iterations > iterations_between_pauses){
+      LOG_INFO("TUNER PAUSE");
       std::this_thread::sleep_for(std::chrono::milliseconds(duration_of_pause));
-      pause_timer.Reset();
-      pause_timer.Start();
+      tuner_iterations = 0;
     }
 
   }

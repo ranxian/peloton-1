@@ -32,7 +32,7 @@ void Usage() {
       "   -f --analyze_sample_count_threshold :  Analyze speed \n"
       "   -g --tuples_per_tg                  :  # of tuples per tilegroup\n"
       "   -h --help                           :  Print help message\n"
-      "   -i --duration_between_pauses        :  Duration between pauses\n"
+      "   -i --iterations_between_pauses      :  Iterations between pauses\n"
       "   -j --duration_of_pause              :  Duration of pause\n"
       "   -k --scale-factor                   :  # of tile groups\n"
       "   -l --layout                         :  Layout\n"
@@ -58,7 +58,7 @@ static struct option opts[] = {
     {"variability_threshold", optional_argument, NULL, 'd'},
     {"tuner_mode_type", optional_argument, NULL, 'e'},
     {"tuples_per_tg", optional_argument, NULL, 'g'},
-    {"duration_between_pauses", optional_argument, NULL, 'i'},
+    {"iterations_between_pauses", optional_argument, NULL, 'i'},
     {"duration_of_pause", optional_argument, NULL, 'j'},
     {"scale-factor", optional_argument, NULL, 'k'},
     {"layout", optional_argument, NULL, 'l'},
@@ -252,14 +252,14 @@ static void ValidateTuplesPerTileGroup(const configuration &state) {
   LOG_INFO("%s : %d", "tuples_per_tilegroup", state.tuples_per_tilegroup);
 }
 
-static void ValidateDurationBetweenPauses(const configuration &state) {
-  if (state.duration_between_pauses <= 0) {
-    LOG_ERROR("Invalid duration_between_pauses :: %u",
-              state.duration_between_pauses);
+static void ValidateIterationsBetweenPauses(const configuration &state) {
+  if (state.iterations_between_pauses <= 0) {
+    LOG_ERROR("Invalid iterations_between_pauses :: %u",
+              state.iterations_between_pauses);
     exit(EXIT_FAILURE);
   }
 
-  LOG_INFO("%s : %u", "duration_between_pauses", state.duration_between_pauses);
+  LOG_INFO("%s : %u", "iterations_between_pauses", state.iterations_between_pauses);
 }
 
 static void ValidateDurationOfPause(const configuration &state) {
@@ -378,9 +378,9 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
 
   // Learning rate
   state.analyze_sample_count_threshold = 100;
-  state.duration_between_pauses = 1000;
-  state.duration_of_pause = 10;
-  state.tile_groups_indexed_per_iteration = 10;
+  state.iterations_between_pauses = 10;
+  state.duration_of_pause = 100;
+  state.tile_groups_indexed_per_iteration = 1;
 
   // Convergence parameters
   state.convergence = false;
@@ -431,7 +431,7 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
         break;
 
       case 'i':
-        state.duration_between_pauses = atoi(optarg);
+        state.iterations_between_pauses = atoi(optarg);
         break;
       case 'j':
         state.duration_of_pause = atoi(optarg);
@@ -503,12 +503,8 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   ValidateIndexCountThreshold(state);
   ValidateIndexUtilityThreshold(state);
   ValidateWriteRatioThreshold(state);
-
-  // Setup tile groups indexed per iteration based on scale factor
-  state.tile_groups_indexed_per_iteration = state.scale_factor / 10;
-
   ValidateDurationOfPause(state);
-  ValidateDurationBetweenPauses(state);
+  ValidateIterationsBetweenPauses(state);
   ValidateAnalyzeSampleCountThreshold(state);
   ValidateMaxTileGroupsIndexed(state);
   ValidateConvergence(state);

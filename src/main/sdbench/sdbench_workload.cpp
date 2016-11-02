@@ -1165,13 +1165,14 @@ static bool HasIndexConfigurationConverged() {
 
 void RunSDBenchTest() {
   // Setup index tuner
-  index_tuner.SetDurationBetweenPauses(state.duration_between_pauses);
+  index_tuner.SetIterationsBetweenPauses(state.iterations_between_pauses);
   index_tuner.SetDurationOfPause(state.duration_of_pause);
   index_tuner.SetAnalyzeSampleCountThreshold(state.analyze_sample_count_threshold);
   index_tuner.SetTileGroupsIndexedPerIteration(state.tile_groups_indexed_per_iteration);
   index_tuner.SetIndexUtilityThreshold(state.index_utility_threshold);
   index_tuner.SetIndexCountThreshold(state.index_count_threshold);
   index_tuner.SetWriteRatioThreshold(state.write_ratio_threshold);
+  index_tuner.SetTileGroupsIndexedPerIteration(state.tile_groups_indexed_per_iteration);
 
   std::thread index_builder;
 

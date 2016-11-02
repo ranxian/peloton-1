@@ -104,8 +104,8 @@ class configuration {
 
   // INDEX TUNER PARAMETERS
 
-  // duration between pauses
-  oid_t duration_between_pauses;
+  // iterations between pauses
+  oid_t iterations_between_pauses;
 
   // duration of pause
   oid_t duration_of_pause;
