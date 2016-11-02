@@ -88,13 +88,19 @@ void GenerateSequence(oid_t column_count) {
 }
 
 static void ValidateIndexUsageType(const configuration &state) {
-  if (state.index_usage_type < 1 || state.index_usage_type > 3) {
+  if (state.index_usage_type < 1 || state.index_usage_type > 5) {
     LOG_ERROR("Invalid index_usage_type :: %d", state.index_usage_type);
     exit(EXIT_FAILURE);
   } else {
     switch (state.index_usage_type) {
-      case INDEX_USAGE_TYPE_PARTIAL:
-        LOG_INFO("%s : PARTIAL", "index_usage_type ");
+      case INDEX_USAGE_TYPE_PARTIAL_FAST:
+        LOG_INFO("%s : PARTIAL_FAST", "index_usage_type ");
+        break;
+      case INDEX_USAGE_TYPE_PARTIAL_MEDIUM:
+        LOG_INFO("%s : PARTIAL_MEDIUM", "index_usage_type ");
+        break;
+      case INDEX_USAGE_TYPE_PARTIAL_SLOW:
+        LOG_INFO("%s : PARTIAL_SLOW", "index_usage_type ");
         break;
       case INDEX_USAGE_TYPE_NEVER:
         LOG_INFO("%s : NEVER", "index_usage_type ");
@@ -354,7 +360,7 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   state.verbose = false;
 
   // Default Values
-  state.index_usage_type = INDEX_USAGE_TYPE_PARTIAL;
+  state.index_usage_type = INDEX_USAGE_TYPE_PARTIAL_FAST;
   state.query_complexity_type = QUERY_COMPLEXITY_TYPE_SIMPLE;
   state.write_complexity_type = WRITE_COMPLEXITY_TYPE_SIMPLE;
 
@@ -380,7 +386,7 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   state.analyze_sample_count_threshold = 100;
   state.duration_between_pauses = 10;
   state.duration_of_pause = 100;
-  state.tile_groups_indexed_per_iteration = 1;
+  state.tile_groups_indexed_per_iteration = 10;
 
   // Convergence parameters
   state.convergence = false;
@@ -489,6 +495,18 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   }
 
   ValidateIndexUsageType(state);
+
+  /// Set duration between pauses based on index usage type
+  if(state.index_usage_type == INDEX_USAGE_TYPE_PARTIAL_FAST){
+    state.duration_between_pauses = 10000;
+  }
+  else if(state.index_usage_type == INDEX_USAGE_TYPE_PARTIAL_MEDIUM) {
+    state.duration_between_pauses = 1000;
+  }
+  else if(state.index_usage_type == INDEX_USAGE_TYPE_PARTIAL_SLOW) {
+    state.duration_between_pauses = 100;
+  }
+
   ValidateWriteRatio(state);
   ValidateQueryComplexityType(state);
   ValidateWriteComplexityType(state);
