@@ -349,7 +349,7 @@ static std::vector<double> GetColumnsAccessed(
   // Init map
   for (auto col : column_ids) columns_accessed_map[(int)col] = 1;
 
-  for (int column_itr = 0; column_itr < state.attribute_count + 1;
+  for (oid_t column_itr = 0; column_itr < state.attribute_count + 1;
        column_itr++) {
     auto location = columns_accessed_map.find(column_itr);
     auto end = columns_accessed_map.end();
@@ -498,7 +498,7 @@ static void RunSimpleQuery() {
   std::vector<oid_t> tuple_key_attrs;
   std::vector<oid_t> index_key_attrs;
 
-  oid_t predicate = rand() % state.attribute_count;
+  oid_t predicate = rand() % state.variability_threshold;
   oid_t first_attribute = predicate;
   tuple_key_attrs = {first_attribute};
   index_key_attrs = {0};
@@ -998,7 +998,7 @@ static void RunSimpleUpdate() {
 
   update_attrs = {15, 16, 17};
 
-  oid_t predicate = rand() % state.attribute_count;
+  oid_t predicate = rand() % state.variability_threshold;
   oid_t first_attribute = predicate;
   tuple_key_attrs = {first_attribute};
   index_key_attrs = {0};
@@ -1164,7 +1164,9 @@ static bool HasIndexConfigurationConverged() {
   prev_index_summary = index_summary;
 
   // Check threshold # of ops
-  if (stable_index_configuration_op_count >= state.convergence_op_threshold) {
+  if (stable_index_configuration_op_count
+      >= state.convergence_op_threshold) {
+    LOG_INFO("Has converged");
     return true;
   }
 

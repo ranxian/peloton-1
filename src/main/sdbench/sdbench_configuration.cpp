@@ -401,7 +401,7 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   state.aggregate = true;
 
   // Variability parameters
-  state.variability_threshold = 10;
+  state.variability_threshold = 100;
 
   // Drop parameters
   state.index_utility_threshold = 0.25;
@@ -514,6 +514,12 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
     state.duration_between_pauses = 1000;
   } else if (state.index_usage_type == INDEX_USAGE_TYPE_PARTIAL_SLOW) {
     state.duration_between_pauses = 100;
+  }
+
+  /// Check variability threshold
+  if(state.variability_threshold >= state.attribute_count){
+    LOG_ERROR("Variability threshold higher than attribute count");
+    exit(EXIT_FAILURE);
   }
 
   ValidateWriteRatio(state);

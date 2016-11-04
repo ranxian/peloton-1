@@ -86,7 +86,7 @@ class configuration {
   double projectivity;
 
   // column count
-  int attribute_count;
+  oid_t attribute_count;
 
   // write ratio
   double write_ratio;
