@@ -755,6 +755,9 @@ static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
     column_ids.push_back(sdbench_column_ids[col_itr]);
   }
 
+  column_count = state.projectivity * state.attribute_count;
+  column_ids.resize(column_count);
+
   std::unique_ptr<executor::ExecutorContext> context(
       new executor::ExecutorContext(txn));
 
@@ -769,8 +772,6 @@ static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
 
   // Resize column ids to contain only columns
   // over which we compute aggregates
-  column_count = state.projectivity * state.attribute_count;
-  column_ids.resize(column_count);
 
   // (1-5) Setup plan node
 
@@ -791,11 +792,11 @@ static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
 
   // 3) Set up aggregates
   std::vector<planner::AggregatePlan::AggTerm> agg_terms;
-  for (auto column_id : column_ids) {
+  for (col_itr = 0; col_itr < column_count; col_itr++) {
     planner::AggregatePlan::AggTerm max_column_agg(
         EXPRESSION_TYPE_AGGREGATE_MAX,
         expression::ExpressionUtil::TupleValueFactory(VALUE_TYPE_INTEGER, 0,
-                                                      column_id),
+                                                      col_itr),
         false);
     agg_terms.push_back(max_column_agg);
   }
@@ -839,11 +840,7 @@ static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
                         std::to_string(column_id), is_inlined);
     output_columns.push_back(column);
 
-    if (state.aggregate) {
-      old_to_new_cols[col_itr] = col_itr;
-    } else {
-      old_to_new_cols[column_ids[col_itr]] = col_itr;
-    }
+    old_to_new_cols[col_itr] = col_itr;
 
     col_itr++;
   }
