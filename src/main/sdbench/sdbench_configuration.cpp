@@ -40,7 +40,6 @@ void Usage() {
       "   -o --convergence                    :  Convergence\n"
       "   -p --projectivity                   :  Projectivity\n"
       "   -q --total_ops                      :  # of operations\n"
-      "   -r --aggreage                       :  Do aggregate or not\n"
       "   -s --selectivity                    :  Selectivity\n"
       "   -t --phase_length                   :  Length of a phase\n"
       "   -u --write_complexity_type          :  Complexity of write\n"
@@ -362,10 +361,6 @@ static void ValidateWriteRatioThreshold(const configuration &state) {
   LOG_INFO("%s : %.2lf", "write_ratio_threshold", state.write_ratio_threshold);
 }
 
-static void ValidateAggregate(const configuration &state) {
-  LOG_INFO("%s : %d", "aggregate", state.aggregate);
-}
-
 void ParseArguments(int argc, char *argv[], configuration &state) {
   state.verbose = false;
 
@@ -401,7 +396,6 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   // Convergence parameters
   state.convergence = false;
   state.convergence_op_threshold = 200;
-  state.aggregate = true;
 
   // Variability parameters
   state.variability_threshold = 100;
@@ -473,9 +467,6 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
       case 'q':
         state.total_ops = atol(optarg);
         break;
-      case 'r':
-        state.aggregate = atoi(optarg);
-        break;
       case 's':
         state.selectivity = atof(optarg);
         break;
@@ -546,7 +537,6 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   ValidateConvergence(state);
   ValidateQueryConvergenceThreshold(state);
   ValidateVariabilityThreshold(state);
-  ValidateAggregate(state);
 }
 
 }  // namespace sdbench

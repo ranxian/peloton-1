@@ -404,12 +404,11 @@ static void ExecuteTest(std::vector<executor::AbstractExecutor *> &executors,
 
     size_t sum = 0;
     for (auto &result_tile : result_tiles) {
-      sum += result_tile->GetTupleCount();
+      if (result_tile != nullptr)
+        sum += result_tile->GetTupleCount();
     }
 
-    if (state.verbose) {
-      LOG_INFO("result tiles have %d tuples", (int)sum);
-    }
+    LOG_TRACE("result tiles have %d tuples", (int)sum);
 
     // Execute stuff
     executor->Execute();
@@ -865,11 +864,7 @@ static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
 
   executor::MaterializationExecutor mat_executor(&mat_node, nullptr);
 
-  if (state.aggregate) {
-    mat_executor.AddChild(&aggregation_executor);
-  } else {
-    mat_executor.AddChild(&hybrid_scan_executor);
-  }
+  mat_executor.AddChild(&aggregation_executor);
 
   /////////////////////////////////////////////////////////
   // EXECUTE
@@ -1001,6 +996,8 @@ static void UpdateHelper(const std::vector<oid_t> &tuple_key_attrs,
 }
 
 static void InsertHelper() {
+  const int BULK_INSERT_COUNT = 1000;
+
   auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
 
   auto txn = txn_manager.BeginTransaction();
@@ -1032,11 +1029,9 @@ static void InsertHelper() {
       new planner::ProjectInfo(std::move(target_list),
                                std::move(direct_map_list)));
 
-  auto bulk_insert_count = 1;
-
-  LOG_TRACE("Bulk insert count : %d", bulk_insert_count);
+  LOG_TRACE("Bulk insert count : %d", BULK_INSERT_COUNT);
   planner::InsertPlan insert_node(sdbench_table.get(), std::move(project_info),
-                                  bulk_insert_count);
+                                  BULK_INSERT_COUNT);
   executor::InsertExecutor insert_executor(&insert_node, context.get());
 
   /////////////////////////////////////////////////////////
@@ -1062,9 +1057,9 @@ static void InsertHelper() {
  * @brief Run bulk insert workload.
  */
 static void RunInsert() {
-  const oid_t NUM_INSERT = 100;
+  LOG_TRACE("Run insert");
 
-  for (oid_t i = 0; i < NUM_INSERT; i++) {
+  for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
     InsertHelper();
   }
 }

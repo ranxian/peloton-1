@@ -105,9 +105,6 @@ class configuration {
   // Convergence test?
   bool convergence;
 
-  // Do aggregate or not, this is used for layout experiment
-  bool aggregate;
-
   // INDEX TUNER PARAMETERS
 
   // duration between pauses

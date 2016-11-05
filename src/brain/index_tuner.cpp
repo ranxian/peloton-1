@@ -325,6 +325,9 @@ void IndexTuner::AddIndexes(storage::DataTable* table,
     std::set<oid_t> suggested_index_set(suggested_index.begin(),
                                         suggested_index.end());
 
+    if (suggested_index_set.empty())
+      continue;
+
     // Go over all indices
     bool suggested_index_found = false;
     oid_t index_itr;
