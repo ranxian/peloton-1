@@ -139,7 +139,7 @@ static void ValidateQueryComplexityType(const configuration &state) {
 }
 
 static void ValidateWriteComplexityType(const configuration &state) {
-  if (state.write_complexity_type < 1 || state.write_complexity_type > 2) {
+  if (state.write_complexity_type < 1 || state.write_complexity_type > 3) {
     LOG_ERROR("Invalid write_complexity_type :: %d",
               state.write_complexity_type);
     exit(EXIT_FAILURE);
@@ -150,6 +150,9 @@ static void ValidateWriteComplexityType(const configuration &state) {
         break;
       case WRITE_COMPLEXITY_TYPE_COMPLEX:
         LOG_INFO("write_complexity_type : COMPLEX");
+        break;
+      case WRITE_COMPLEXITY_TYPE_INSERT:
+        LOG_INFO("write_complexity_type: INSERT");
         break;
       default:
         break;

@@ -402,6 +402,15 @@ static void ExecuteTest(std::vector<executor::AbstractExecutor *> &executors,
       result_tiles.emplace_back(result_tile.release());
     }
 
+    size_t sum = 0;
+    for (auto &result_tile : result_tiles) {
+      sum += result_tile->GetTupleCount();
+    }
+
+    if (state.verbose) {
+      LOG_INFO("result tiles have %d tuples", (int)sum);
+    }
+
     // Execute stuff
     executor->Execute();
   }
@@ -541,9 +550,6 @@ static void RunComplexQuery() {
   oid_t left_table_join_column;
   oid_t right_table_join_column;
 
-  std::vector<oid_t> tuple_key_attrs;
-  std::vector<oid_t> index_key_attrs;
-
   bool is_join_query = false;
   bool is_aggregate_query = false;
 
@@ -552,6 +558,8 @@ static void RunComplexQuery() {
   auto predicate = GetPredicate();
   left_table_tuple_key_attrs = predicate;
   left_table_index_key_attrs = {0, 1, 2};
+  std::vector<oid_t> tuple_key_attrs = predicate;
+  std::vector<oid_t> index_key_attrs = {0, 1, 2};
   right_table_tuple_key_attrs = {predicate[0] + 10, predicate[1] + 10,
                                  predicate[2] + 10};
   right_table_index_key_attrs = {0, 1, 2};
@@ -561,18 +569,22 @@ static void RunComplexQuery() {
   right_table_join_column = predicate[1];
 
   // Pick join or aggregate
+  // is_join_query = true;
+  // is_aggregate_query = false;
   auto sample = rand() % 10;
   if (sample > 5) {
     is_join_query = true;
+    is_aggregate_query = false;
   } else {
     is_aggregate_query = true;
+    is_join_query = false;
   }
 
   if (is_join_query == true) {
-    LOG_TRACE("Complex :: %s", GetOidVectorString(tuple_key_attrs).c_str());
+    LOG_INFO("Complex :: %s, %s, c1: %d, c2: %d", GetOidVectorString(left_table_tuple_key_attrs).c_str(),
+      GetOidVectorString(right_table_tuple_key_attrs).c_str(), (int)left_table_join_column, (int)right_table_join_column);
   } else if (is_aggregate_query == true) {
-    LOG_TRACE("Complex :: %s", GetOidVectorString(left_table_tuple_key_attrs +
-                                                  right_table_tuple_key_attrs)
+    LOG_TRACE("Complex :: %s", GetOidVectorString(tuple_key_attrs)
                                    .c_str());
   } else {
     LOG_ERROR("Invalid query \n");
@@ -988,6 +1000,75 @@ static void UpdateHelper(const std::vector<oid_t> &tuple_key_attrs,
   txn_manager.CommitTransaction();
 }
 
+static void InsertHelper() {
+  auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
+
+  auto txn = txn_manager.BeginTransaction();
+
+  /////////////////////////////////////////////////////////
+  // INSERT
+  /////////////////////////////////////////////////////////
+
+  std::unique_ptr<executor::ExecutorContext> context(
+      new executor::ExecutorContext(txn));
+
+  std::vector<Value> values;
+  Value insert_val = ValueFactory::GetIntegerValue(++sdbench_tuple_counter);
+  TargetList target_list;
+  DirectMapList direct_map_list;
+  std::vector<oid_t> column_ids;
+
+  target_list.clear();
+  direct_map_list.clear();
+
+  for (oid_t col_id = 0; col_id <= state.attribute_count; col_id++) {
+    auto expression =
+        expression::ExpressionUtil::ConstantValueFactory(insert_val);
+    target_list.emplace_back(col_id, expression);
+    column_ids.push_back(col_id);
+  }
+
+  std::unique_ptr<const planner::ProjectInfo> project_info(
+      new planner::ProjectInfo(std::move(target_list),
+                               std::move(direct_map_list)));
+
+  auto bulk_insert_count = 1;
+
+  LOG_TRACE("Bulk insert count : %d", bulk_insert_count);
+  planner::InsertPlan insert_node(sdbench_table.get(), std::move(project_info),
+                                  bulk_insert_count);
+  executor::InsertExecutor insert_executor(&insert_node, context.get());
+
+  /////////////////////////////////////////////////////////
+  // EXECUTE
+  /////////////////////////////////////////////////////////
+
+  std::vector<executor::AbstractExecutor *> executors;
+  executors.push_back(&insert_executor);
+
+  /////////////////////////////////////////////////////////
+  // COLLECT STATS
+  /////////////////////////////////////////////////////////
+  std::vector<double> index_columns_accessed;
+  double selectivity = 0;
+
+  ExecuteTest(executors, brain::SAMPLE_TYPE_UPDATE, {index_columns_accessed}, {},
+              selectivity);
+
+  txn_manager.CommitTransaction();
+}
+
+/**
+ * @brief Run bulk insert workload.
+ */
+static void RunInsert() {
+  const oid_t NUM_INSERT = 100;
+
+  for (oid_t i = 0; i < NUM_INSERT; i++) {
+    InsertHelper();
+  }
+}
+
 static void RunSimpleUpdate() {
   std::vector<oid_t> tuple_key_attrs;
   std::vector<oid_t> index_key_attrs;
@@ -1070,6 +1151,9 @@ static void RunWrite() {
       break;
     case WRITE_COMPLEXITY_TYPE_COMPLEX:
       RunComplexUpdate();
+      break;
+    case WRITE_COMPLEXITY_TYPE_INSERT:
+      RunInsert();
       break;
     default:
       break;

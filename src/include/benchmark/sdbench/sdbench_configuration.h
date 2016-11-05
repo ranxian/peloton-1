@@ -47,7 +47,9 @@ enum WriteComplexityType {
   WRITE_COMPLEXITY_TYPE_INVALID = 0,
 
   WRITE_COMPLEXITY_TYPE_SIMPLE = 1,
-  WRITE_COMPLEXITY_TYPE_COMPLEX = 2
+  WRITE_COMPLEXITY_TYPE_COMPLEX = 2,
+  // This is a special complexity type, where we do insert instead of update.
+  WRITE_COMPLEXITY_TYPE_INSERT = 3
 };
 
 // Copy from types.h for reference
