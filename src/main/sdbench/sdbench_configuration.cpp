@@ -48,6 +48,7 @@ void Usage() {
       "   -x --index_count_threshold          :  Index count threshold\n"
       "   -y --index_utility_threshold        :  Index utility threshold\n"
       "   -z --write_ratio_threshold          :  Write ratio threshold\n");
+
   exit(EXIT_FAILURE);
 }
 
@@ -137,7 +138,7 @@ static void ValidateQueryComplexityType(const configuration &state) {
 }
 
 static void ValidateWriteComplexityType(const configuration &state) {
-  if (state.write_complexity_type < 1 || state.write_complexity_type > 2) {
+  if (state.write_complexity_type < 1 || state.write_complexity_type > 3) {
     LOG_ERROR("Invalid write_complexity_type :: %d",
               state.write_complexity_type);
     exit(EXIT_FAILURE);
@@ -148,6 +149,9 @@ static void ValidateWriteComplexityType(const configuration &state) {
         break;
       case WRITE_COMPLEXITY_TYPE_COMPLEX:
         LOG_INFO("write_complexity_type : COMPLEX");
+        break;
+      case WRITE_COMPLEXITY_TYPE_INSERT:
+        LOG_INFO("write_complexity_type: INSERT");
         break;
       default:
         break;
@@ -270,8 +274,7 @@ static void ValidateDurationBetweenPauses(const configuration &state) {
 
 static void ValidateDurationOfPause(const configuration &state) {
   if (state.duration_of_pause <= 0) {
-    LOG_ERROR("Invalid duration_of_pause :: %u",
-              state.duration_of_pause);
+    LOG_ERROR("Invalid duration_of_pause :: %u", state.duration_of_pause);
     exit(EXIT_FAILURE);
   }
 
@@ -285,7 +288,8 @@ static void ValidateAnalyzeSampleCountThreshold(const configuration &state) {
     exit(EXIT_FAILURE);
   }
 
-  LOG_INFO("%s : %u", "analyze_sample_count_threshold", state.analyze_sample_count_threshold);
+  LOG_INFO("%s : %u", "analyze_sample_count_threshold",
+           state.analyze_sample_count_threshold);
 }
 
 static void ValidateMaxTileGroupsIndexed(const configuration &state) {
@@ -295,7 +299,8 @@ static void ValidateMaxTileGroupsIndexed(const configuration &state) {
     exit(EXIT_FAILURE);
   }
 
-  LOG_INFO("%s : %u", "max_tile_groups_indexed", state.tile_groups_indexed_per_iteration);
+  LOG_INFO("%s : %u", "max_tile_groups_indexed",
+           state.tile_groups_indexed_per_iteration);
 }
 
 static void ValidateConvergence(const configuration &state) {
@@ -403,13 +408,14 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   // Parse args
   while (1) {
     int idx = 0;
-    int c = getopt_long(
-        argc, argv, "a:b:c:d:e:f:g:hi:j:k:l:m:o:p:q:s:t:u:v:w:x:y:z:", opts, &idx);
+    int c = getopt_long(argc, argv,
+                        "a:b:c:d:e:f:g:hi:j:k:l:m:o:p:q:r:s:t:u:v:w:x:y:z:",
+                        opts, &idx);
 
     if (c == -1) break;
 
     switch (c) {
-      // AVAILABLE FLAGS: nrABCDEFGHIJKLMNOPQRSTUVWXYZ
+      // AVAILABLE FLAGS: nABCDEFGHIJKLMNOPQRSTUVWXYZ
       case 'a':
         state.attribute_count = atoi(optarg);
         break;
@@ -461,7 +467,6 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
       case 'q':
         state.total_ops = atol(optarg);
         break;
-
       case 's':
         state.selectivity = atof(optarg);
         break;
@@ -497,13 +502,11 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   ValidateIndexUsageType(state);
 
   /// Set duration between pauses based on index usage type
-  if(state.index_usage_type == INDEX_USAGE_TYPE_PARTIAL_FAST){
+  if (state.index_usage_type == INDEX_USAGE_TYPE_PARTIAL_FAST) {
     state.duration_between_pauses = 10000;
-  }
-  else if(state.index_usage_type == INDEX_USAGE_TYPE_PARTIAL_MEDIUM) {
+  } else if (state.index_usage_type == INDEX_USAGE_TYPE_PARTIAL_MEDIUM) {
     state.duration_between_pauses = 1000;
-  }
-  else if(state.index_usage_type == INDEX_USAGE_TYPE_PARTIAL_SLOW) {
+  } else if (state.index_usage_type == INDEX_USAGE_TYPE_PARTIAL_SLOW) {
     state.duration_between_pauses = 100;
   }
 
@@ -534,7 +537,6 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   ValidateConvergence(state);
   ValidateQueryConvergenceThreshold(state);
   ValidateVariabilityThreshold(state);
-
 }
 
 }  // namespace sdbench

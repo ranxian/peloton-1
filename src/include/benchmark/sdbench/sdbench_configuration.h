@@ -32,7 +32,6 @@ enum IndexUsageType {
   INDEX_USAGE_TYPE_PARTIAL_SLOW = 3,    // use partially materialized indexes (slow)
   INDEX_USAGE_TYPE_FULL = 4,       // use only fully materialized indexes
   INDEX_USAGE_TYPE_NEVER = 5,      // never use ad-hoc indexes
-
 };
 
 enum QueryComplexityType {
@@ -48,7 +47,9 @@ enum WriteComplexityType {
   WRITE_COMPLEXITY_TYPE_INVALID = 0,
 
   WRITE_COMPLEXITY_TYPE_SIMPLE = 1,
-  WRITE_COMPLEXITY_TYPE_COMPLEX = 2
+  WRITE_COMPLEXITY_TYPE_COMPLEX = 2,
+  // This is a special complexity type, where we do insert instead of update.
+  WRITE_COMPLEXITY_TYPE_INSERT = 3
 };
 
 // Copy from types.h for reference

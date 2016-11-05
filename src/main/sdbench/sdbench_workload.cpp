@@ -110,11 +110,10 @@ std::vector<std::vector<oid_t>> predicate_distribution;
 std::size_t predicate_distribution_size = 0;
 
 static void GeneratePredicateDistribution() {
-
-  for(oid_t i = 1; i <= 9; i++) {
-    for(oid_t j = 1; j <= 9; j++) {
-      for(oid_t k = 1; k <= 9; k++) {
-        if(i != j && j != k && i != k) {
+  for (oid_t i = 1; i <= 9; i++) {
+    for (oid_t j = 1; j <= 9; j++) {
+      for (oid_t k = 1; k <= 9; k++) {
+        if (i != j && j != k && i != k) {
           predicate_distribution.push_back(std::vector<oid_t>{i, j, k});
         }
       }
@@ -124,8 +123,8 @@ static void GeneratePredicateDistribution() {
   predicate_distribution_size = predicate_distribution.size();
 }
 
-static std::vector<oid_t> GetPredicate(){
-  if(state.variability_threshold >= predicate_distribution_size){
+static std::vector<oid_t> GetPredicate() {
+  if (state.variability_threshold >= predicate_distribution_size) {
     LOG_ERROR("Don't have enough samples");
     exit(EXIT_FAILURE);
   }
@@ -403,6 +402,14 @@ static void ExecuteTest(std::vector<executor::AbstractExecutor *> &executors,
       result_tiles.emplace_back(result_tile.release());
     }
 
+    size_t sum = 0;
+    for (auto &result_tile : result_tiles) {
+      if (result_tile != nullptr)
+        sum += result_tile->GetTupleCount();
+    }
+
+    LOG_TRACE("result tiles have %d tuples", (int)sum);
+
     // Execute stuff
     executor->Execute();
   }
@@ -542,9 +549,6 @@ static void RunComplexQuery() {
   oid_t left_table_join_column;
   oid_t right_table_join_column;
 
-  std::vector<oid_t> tuple_key_attrs;
-  std::vector<oid_t> index_key_attrs;
-
   bool is_join_query = false;
   bool is_aggregate_query = false;
 
@@ -553,7 +557,10 @@ static void RunComplexQuery() {
   auto predicate = GetPredicate();
   left_table_tuple_key_attrs = predicate;
   left_table_index_key_attrs = {0, 1, 2};
-  right_table_tuple_key_attrs = {predicate[0] + 10, predicate[1] + 10, predicate[2] + 10};
+  std::vector<oid_t> tuple_key_attrs = predicate;
+  std::vector<oid_t> index_key_attrs = {0, 1, 2};
+  right_table_tuple_key_attrs = {predicate[0] + 10, predicate[1] + 10,
+                                 predicate[2] + 10};
   right_table_index_key_attrs = {0, 1, 2};
 
   predicate = GetPredicate();
@@ -561,19 +568,22 @@ static void RunComplexQuery() {
   right_table_join_column = predicate[1];
 
   // Pick join or aggregate
+  // is_join_query = true;
+  // is_aggregate_query = false;
   auto sample = rand() % 10;
-  if(sample > 5) {
+  if (sample > 5) {
     is_join_query = true;
-  }
-  else {
+    is_aggregate_query = false;
+  } else {
     is_aggregate_query = true;
+    is_join_query = false;
   }
 
   if (is_join_query == true) {
-    LOG_TRACE("Complex :: %s", GetOidVectorString(tuple_key_attrs).c_str());
+    LOG_INFO("Complex :: %s, %s, c1: %d, c2: %d", GetOidVectorString(left_table_tuple_key_attrs).c_str(),
+      GetOidVectorString(right_table_tuple_key_attrs).c_str(), (int)left_table_join_column, (int)right_table_join_column);
   } else if (is_aggregate_query == true) {
-    LOG_TRACE("Complex :: %s", GetOidVectorString(left_table_tuple_key_attrs +
-                                                  right_table_tuple_key_attrs)
+    LOG_TRACE("Complex :: %s", GetOidVectorString(tuple_key_attrs)
                                    .c_str());
   } else {
     LOG_ERROR("Invalid query \n");
@@ -756,6 +766,9 @@ static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
     column_ids.push_back(sdbench_column_ids[col_itr]);
   }
 
+  column_count = state.projectivity * state.attribute_count;
+  column_ids.resize(column_count);
+
   std::unique_ptr<executor::ExecutorContext> context(
       new executor::ExecutorContext(txn));
 
@@ -770,8 +783,6 @@ static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
 
   // Resize column ids to contain only columns
   // over which we compute aggregates
-  column_count = state.projectivity * state.attribute_count;
-  column_ids.resize(column_count);
 
   // (1-5) Setup plan node
 
@@ -792,11 +803,11 @@ static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
 
   // 3) Set up aggregates
   std::vector<planner::AggregatePlan::AggTerm> agg_terms;
-  for (auto column_id : column_ids) {
+  for (col_itr = 0; col_itr < column_count; col_itr++) {
     planner::AggregatePlan::AggTerm max_column_agg(
         EXPRESSION_TYPE_AGGREGATE_MAX,
         expression::ExpressionUtil::TupleValueFactory(VALUE_TYPE_INTEGER, 0,
-                                                      column_id),
+                                                      col_itr),
         false);
     agg_terms.push_back(max_column_agg);
   }
@@ -841,6 +852,7 @@ static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
     output_columns.push_back(column);
 
     old_to_new_cols[col_itr] = col_itr;
+
     col_itr++;
   }
 
@@ -851,6 +863,7 @@ static void AggregateQueryHelper(const std::vector<oid_t> &tuple_key_attrs,
                                         physify_flag);
 
   executor::MaterializationExecutor mat_executor(&mat_node, nullptr);
+
   mat_executor.AddChild(&aggregation_executor);
 
   /////////////////////////////////////////////////////////
@@ -982,6 +995,75 @@ static void UpdateHelper(const std::vector<oid_t> &tuple_key_attrs,
   txn_manager.CommitTransaction();
 }
 
+static void InsertHelper() {
+  const int BULK_INSERT_COUNT = 1000;
+
+  auto &txn_manager = concurrency::TransactionManagerFactory::GetInstance();
+
+  auto txn = txn_manager.BeginTransaction();
+
+  /////////////////////////////////////////////////////////
+  // INSERT
+  /////////////////////////////////////////////////////////
+
+  std::unique_ptr<executor::ExecutorContext> context(
+      new executor::ExecutorContext(txn));
+
+  std::vector<Value> values;
+  Value insert_val = ValueFactory::GetIntegerValue(++sdbench_tuple_counter);
+  TargetList target_list;
+  DirectMapList direct_map_list;
+  std::vector<oid_t> column_ids;
+
+  target_list.clear();
+  direct_map_list.clear();
+
+  for (oid_t col_id = 0; col_id <= state.attribute_count; col_id++) {
+    auto expression =
+        expression::ExpressionUtil::ConstantValueFactory(insert_val);
+    target_list.emplace_back(col_id, expression);
+    column_ids.push_back(col_id);
+  }
+
+  std::unique_ptr<const planner::ProjectInfo> project_info(
+      new planner::ProjectInfo(std::move(target_list),
+                               std::move(direct_map_list)));
+
+  LOG_TRACE("Bulk insert count : %d", BULK_INSERT_COUNT);
+  planner::InsertPlan insert_node(sdbench_table.get(), std::move(project_info),
+                                  BULK_INSERT_COUNT);
+  executor::InsertExecutor insert_executor(&insert_node, context.get());
+
+  /////////////////////////////////////////////////////////
+  // EXECUTE
+  /////////////////////////////////////////////////////////
+
+  std::vector<executor::AbstractExecutor *> executors;
+  executors.push_back(&insert_executor);
+
+  /////////////////////////////////////////////////////////
+  // COLLECT STATS
+  /////////////////////////////////////////////////////////
+  std::vector<double> index_columns_accessed;
+  double selectivity = 0;
+
+  ExecuteTest(executors, brain::SAMPLE_TYPE_UPDATE, {index_columns_accessed}, {},
+              selectivity);
+
+  txn_manager.CommitTransaction();
+}
+
+/**
+ * @brief Run bulk insert workload.
+ */
+static void RunInsert() {
+  LOG_TRACE("Run insert");
+
+  for (oid_t txn_itr = 0; txn_itr < state.phase_length; txn_itr++) {
+    InsertHelper();
+  }
+}
+
 static void RunSimpleUpdate() {
   std::vector<oid_t> tuple_key_attrs;
   std::vector<oid_t> index_key_attrs;
@@ -1064,6 +1146,9 @@ static void RunWrite() {
       break;
     case WRITE_COMPLEXITY_TYPE_COMPLEX:
       RunComplexUpdate();
+      break;
+    case WRITE_COMPLEXITY_TYPE_INSERT:
+      RunInsert();
       break;
     default:
       break;
@@ -1166,14 +1251,21 @@ static bool HasIndexConfigurationConverged() {
 
 void RunSDBenchTest() {
   // Setup index tuner
+  index_tuner.SetAnalyzeSampleCountThreshold(
+      state.analyze_sample_count_threshold);
+  index_tuner.SetTileGroupsIndexedPerIteration(
+      state.tile_groups_indexed_per_iteration);
   index_tuner.SetDurationBetweenPauses(state.duration_between_pauses);
   index_tuner.SetDurationOfPause(state.duration_of_pause);
-  index_tuner.SetAnalyzeSampleCountThreshold(state.analyze_sample_count_threshold);
-  index_tuner.SetTileGroupsIndexedPerIteration(state.tile_groups_indexed_per_iteration);
+  index_tuner.SetAnalyzeSampleCountThreshold(
+      state.analyze_sample_count_threshold);
+  index_tuner.SetTileGroupsIndexedPerIteration(
+      state.tile_groups_indexed_per_iteration);
   index_tuner.SetIndexUtilityThreshold(state.index_utility_threshold);
   index_tuner.SetIndexCountThreshold(state.index_count_threshold);
   index_tuner.SetWriteRatioThreshold(state.write_ratio_threshold);
-  index_tuner.SetTileGroupsIndexedPerIteration(state.tile_groups_indexed_per_iteration);
+  index_tuner.SetTileGroupsIndexedPerIteration(
+      state.tile_groups_indexed_per_iteration);
 
   std::thread index_builder;
 
@@ -1187,6 +1279,8 @@ void RunSDBenchTest() {
   GeneratePredicateDistribution();
 
   CreateAndLoadTable((LayoutType)state.layout_mode);
+
+  // state.index_usage_type = INDEX_USAGE_TYPE_NEVER;
 
   double write_ratio = state.write_ratio;
 
@@ -1216,20 +1310,19 @@ void RunSDBenchTest() {
 
   // cache original phase length
   size_t original_phase_length = state.phase_length;
-  if(original_phase_length < 5){
+  if (original_phase_length < 5) {
     LOG_ERROR("Phase length must be greater than 5");
     return;
   }
 
   // run desired number of ops
   oid_t phase_count = 0;
-  for (oid_t op_itr = 0; op_itr < state.total_ops; ) {
-
+  for (oid_t op_itr = 0; op_itr < state.total_ops;) {
     // set phase length (NOTE: uneven across phases)
-    size_t minimum_op_count = (original_phase_length/5);
+    size_t minimum_op_count = (original_phase_length / 5);
     size_t rest_op_count = original_phase_length - minimum_op_count;
     size_t current_phase_length = minimum_op_count + rand() % rest_op_count;
-    if(current_phase_length > state.total_ops - op_itr){
+    if (current_phase_length > state.total_ops - op_itr) {
       current_phase_length = state.total_ops - op_itr;
     }
 
@@ -1255,7 +1348,6 @@ void RunSDBenchTest() {
         break;
       }
     }
-
   }
 
   // Stop index tuner
@@ -1275,7 +1367,8 @@ void RunSDBenchTest() {
   // Reset
   query_itr = 0;
 
-  LOG_INFO("Average phase length : %.0lf", (double)state.total_ops/phase_count);
+  LOG_INFO("Average phase length : %.0lf",
+           (double)state.total_ops / phase_count);
   LOG_INFO("Duration : %.2lf", total_duration);
 
   out.close();

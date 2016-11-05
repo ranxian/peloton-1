@@ -64,6 +64,8 @@ bool HybridScanExecutor::DInit() {
     current_tile_group_offset_ = START_OID;
 
     table_tile_group_count_ = table_->GetTileGroupCount();
+    column_ids_ = node.GetColumnIds();
+    predicate_ = node.GetPredicate();
     if (column_ids_.empty()) {
       column_ids_.resize(table_->GetSchema()->GetColumnCount());
       std::iota(column_ids_.begin(), column_ids_.end(), 0);
