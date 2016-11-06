@@ -144,7 +144,7 @@ class IndexTuner {
   oid_t analyze_sample_count_threshold = 10;
 
   // # of tile groups to be indexed per iteration
-  oid_t tile_groups_indexed_per_iteration = 20;
+  oid_t tile_groups_indexed_per_iteration = 10;
 
   // alpha (weight for old samples)
   double alpha = 0.2;
