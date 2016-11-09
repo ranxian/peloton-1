@@ -516,9 +516,6 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
     exit(EXIT_FAILURE);
   }
 
-  /// Scale up speed based on scale factor
-  state.tile_groups_indexed_per_iteration = state.scale_factor/10;
-
   ValidateWriteRatio(state);
   ValidateQueryComplexityType(state);
   ValidateWriteComplexityType(state);
