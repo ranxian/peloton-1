@@ -29,9 +29,9 @@ configuration state;
 // Main Entry Point
 void RunBenchmark() {
 
-  if (state.holistic_indexing) {
+  if (state.multi_stage) {
     // Run holistic indexing comparison benchmark
-    RunHolisticIndexingBenchmark();
+    RunMultiStageBenchmark();
   } else {
     // Run a single sdbench test
     RunSDBenchTest();

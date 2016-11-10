@@ -37,10 +37,11 @@ void Usage() {
       "   -k --scale-factor                   :  # of tile groups\n"
       "   -l --layout                         :  Layout\n"
       "   -m --max_tile_groups_indexed        :  Max tile groups indexed\n"
-      "   -n --holistic_indexing              :  Comparing with holistic indexing\n"
+      "   -n --multi_stage                    :  Run multi stage experiment\n"
       "   -o --convergence                    :  Convergence\n"
       "   -p --projectivity                   :  Projectivity\n"
       "   -q --total_ops                      :  # of operations\n"
+      "   -r --holistic_indexing              :  Run with holistic indexing\n"
       "   -s --selectivity                    :  Selectivity\n"
       "   -t --phase_length                   :  Length of a phase\n"
       "   -u --write_complexity_type          :  Complexity of write\n"
@@ -76,7 +77,8 @@ static struct option opts[] = {
     {"index_count_threshold", optional_argument, NULL, 'x'},
     {"index_utility_threshold", optional_argument, NULL, 'y'},
     {"write_ratio_threshold", optional_argument, NULL, 'z'},
-    {"holistic_indexing", optional_argument, NULL, 'n'},
+    {"multi_stage", optional_argument, NULL, 'n'},
+    {"holistic_indexing", optional_argument, NULL, 'r'},
     {NULL, 0, NULL, 0}};
 
 void GenerateSequence(oid_t column_count) {
@@ -363,6 +365,10 @@ static void ValidateWriteRatioThreshold(const configuration &state) {
   LOG_INFO("%s : %.2lf", "write_ratio_threshold", state.write_ratio_threshold);
 }
 
+static void ValidateMultiStage(const configuration &state) {
+  LOG_INFO("multi_stage: %d", state.multi_stage);
+}
+
 static void ValidateHolisticIndexing(const configuration &state) {
   LOG_INFO("holistic_indexing : %d", state.holistic_indexing);
 }
@@ -410,7 +416,9 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   state.index_utility_threshold = 0.25;
   state.index_count_threshold = 10;
   state.write_ratio_threshold = 0.75;
+  state.multi_stage = false;
   state.holistic_indexing = false;
+  state.multi_stage_idx = 0;
 
   // Parse args
   while (1) {
@@ -463,7 +471,7 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
         state.tile_groups_indexed_per_iteration = atoi(optarg);
         break;
       case 'n':
-        state.holistic_indexing = true;
+        state.multi_stage = atoi(optarg);
         break;
       case 'o':
         state.convergence = atoi(optarg);
@@ -474,7 +482,9 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
       case 'q':
         state.total_ops = atol(optarg);
         break;
-        
+      case 'r':
+        state.holistic_indexing = atoi(optarg);
+        break;
       case 's':
         state.selectivity = atof(optarg);
         break;
@@ -544,6 +554,7 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   ValidateConvergence(state);
   ValidateQueryConvergenceThreshold(state);
   ValidateVariabilityThreshold(state);
+  ValidateMultiStage(state);
   ValidateHolisticIndexing(state);
 }
 

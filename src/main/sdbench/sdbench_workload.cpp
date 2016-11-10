@@ -107,7 +107,13 @@ brain::LayoutTuner &layout_tuner = brain::LayoutTuner::GetInstance();
 // Predicate generator
 std::vector<std::vector<oid_t>> predicate_distribution;
 
+// Bitmap for already used predicate
+#define MAX_PREDICATE_ATTR 10
+bool predicate_used[MAX_PREDICATE_ATTR] = {};
+
 std::size_t predicate_distribution_size = 0;
+
+static void CopyColumn(oid_t col_itr);
 
 static void GeneratePredicateDistribution() {
   for (oid_t i = 1; i <= 9; i++) {
@@ -414,6 +420,22 @@ static void ExecuteTest(std::vector<executor::AbstractExecutor *> &executors,
     executor->Execute();
   }
 
+  // For holistic index
+  if (state.holistic_indexing) {
+    for (auto index_columns: index_columns_accessed) {
+      for (auto index_column : index_columns) {
+        oid_t index_column_oid = (oid_t)index_column;
+        if (!predicate_used[index_column_oid]) {
+          // Copy the predicate column
+          CopyColumn(index_column_oid);
+          CopyColumn(index_column_oid);
+          // CopyColumn(index_column_oid);
+          predicate_used[index_column_oid] = true;
+        }
+      }
+    }
+  }
+
   // Emit time
   timer.Stop();
   auto duration = timer.GetDuration();
@@ -500,6 +522,53 @@ static std::shared_ptr<index::Index> PickIndex(storage::DataTable *table,
   }
 
   return index;
+}
+
+/**
+ * @brief Copy a column from the table.
+ */
+static void CopyColumn(oid_t col_itr) {
+  auto tile_group_count = sdbench_table->GetTileGroupCount();
+  for (oid_t tile_group_itr = 0; tile_group_itr < tile_group_count; tile_group_itr++) {
+    // Prepare a tile for copying
+    std::vector<catalog::Column> columns;
+
+    catalog::Column column1(VALUE_TYPE_INTEGER, GetTypeSize(VALUE_TYPE_INTEGER),
+                            "A", true);
+    columns.push_back(column1);
+
+    // Schema
+    catalog::Schema *schema = new catalog::Schema(columns);
+
+    // Column Names
+    std::vector<std::string> column_names;
+
+    column_names.push_back("COL 1");
+
+    // TG Header
+    storage::TileGroupHeader *header =
+      new storage::TileGroupHeader(BACKEND_TYPE_MM, state.tuples_per_tilegroup);
+
+    storage::Tile *new_tile = storage::TileFactory::GetTile(
+      BACKEND_TYPE_MM, INVALID_OID, INVALID_OID, INVALID_OID, INVALID_OID,
+      header, *schema, nullptr, state.tuples_per_tilegroup);
+
+    // Begin copy
+    oid_t orig_tile_offset, orig_tile_column_offset;
+    auto orig_tile_group = sdbench_table->GetTileGroup(tile_group_itr);
+    orig_tile_group->LocateTileAndColumn(col_itr, orig_tile_offset,
+                                         orig_tile_column_offset);
+    auto orig_tile = orig_tile_group->GetTile(orig_tile_offset);
+    oid_t tuple_count = state.tuples_per_tilegroup;
+    for (oid_t tuple_itr = 0; tuple_itr < tuple_count; tuple_itr++) {
+      auto val = orig_tile->GetValue(tuple_itr, orig_tile_column_offset);
+      new_tile->SetValue(val, tuple_itr, 0);
+    }
+
+    delete new_tile;
+    delete header;
+    delete schema;
+  }
 }
 
 static void RunSimpleQuery() {
@@ -1047,7 +1116,7 @@ static void InsertHelper() {
   std::vector<double> index_columns_accessed;
   double selectivity = 0;
 
-  ExecuteTest(executors, brain::SAMPLE_TYPE_UPDATE, {index_columns_accessed}, {},
+  ExecuteTest(executors, brain::SAMPLE_TYPE_UPDATE, {{}}, {},
               selectivity);
 
   txn_manager.CommitTransaction();
@@ -1366,6 +1435,21 @@ static void SDBenchHelper() {
       RunQuery();
     }
 
+    // Randomly add some access sample to build indices
+    if (state.holistic_indexing && state.multi_stage_idx == 1) {
+      auto predicate = GetPredicate();
+      std::vector<double> index_columns_accessed(predicate.begin(), predicate.end());
+      double selectivity = state.selectivity;
+      double duration = rand() % 100;
+      brain::Sample index_access_sample(index_columns_accessed,
+                                        duration,
+                                        brain::SAMPLE_TYPE_ACCESS, selectivity);
+      for (oid_t i = 0; i < state.analyze_sample_count_threshold; i++) {
+        sdbench_table->RecordIndexSample(index_access_sample);
+      }
+    }
+
+
     // Check index convergence
     if (state.convergence == true) {
       bool converged = HasIndexConfigurationConverged();
@@ -1380,8 +1464,33 @@ static void SDBenchHelper() {
   LOG_INFO("Duration : %.2lf", total_duration);
 }
 
-void RunHolisticIndexingBenchmark() {
+void RunMultiStageBenchmark() {
   BenchmarkPrepare();
+
+  int orig_analyze_sample_count_threshold = state.analyze_sample_count_threshold;
+  // The first stage
+  if (state.holistic_indexing) {
+    // Make the index build speed faster
+    index_tuner.SetAnalyzeSampleCountThreshold((int)(orig_analyze_sample_count_threshold * 0.6));
+  }
+  state.multi_stage_idx = 0;
+  SDBenchHelper();
+  // The second stage
+  if (state.holistic_indexing) {
+    // Make the index build speed slower
+    index_tuner.SetAnalyzeSampleCountThreshold((int)(orig_analyze_sample_count_threshold * 2));
+  }
+  state.multi_stage_idx = 1;
+  SDBenchHelper();
+  // The third stage
+  state.write_ratio = 1.00;
+  state.multi_stage_idx = 2;
+  if (state.holistic_indexing) {
+    // Holistic doesn't drop index
+    index_tuner.SetAnalyzeSampleCountThreshold((int)(orig_analyze_sample_count_threshold));
+    index_tuner.SetWriteRatioThreshold(1.0);
+  }
+  SDBenchHelper();
 
   BenchmarkCleanUp();
 }
