@@ -525,6 +525,8 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
     state.duration_between_pauses = 1000;
   } else if (state.index_usage_type == INDEX_USAGE_TYPE_PARTIAL_SLOW) {
     state.duration_between_pauses = 100;
+  } else if (state.index_usage_type == INDEX_USAGE_TYPE_FULL) {
+    state.duration_between_pauses = 10000;
   }
 
   /// Check variability threshold
