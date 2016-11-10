@@ -138,6 +138,14 @@ class configuration {
 
   // write intensive workload ratio threshold
   double write_ratio_threshold;
+
+  // wether run multi stage experiment or not.
+  bool multi_stage;
+
+  // whether in holistic indexing mode or not.
+  bool holistic_indexing;
+
+  oid_t multi_stage_idx = 0;
 };
 
 void Usage(FILE *out);

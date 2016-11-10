@@ -228,7 +228,9 @@ ItemPointer DataTable::InsertTuple(const storage::Tuple *tuple) {
 
   for (oid_t index_itr = 0; index_itr < index_count; index_itr++) {
     auto index = GetIndex(index_itr);
-    index->IncreaseNumberOfTuplesBy(1);
+    if (index != nullptr) {
+      index->IncreaseNumberOfTuplesBy(1);
+    }
 
     // Update index count
     index_count = GetIndexCount();
@@ -789,7 +791,9 @@ void DataTable::DropIndexWithOid(const oid_t &index_oid) {
 
   PL_ASSERT(index_itr < GetIndexCount());
 
-  // Drop the index
+  // Drop the index. Make a copy sp that we do not deallocate it immediately
+  std::shared_ptr<index::Index> * index_copy = new std::shared_ptr<index::Index>(index);
+  index_copy = index_copy;
   indexes_.Update(index_itr, nullptr);
 
   // Index attrs won't be dropped

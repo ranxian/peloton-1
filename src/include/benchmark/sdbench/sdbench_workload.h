@@ -22,6 +22,7 @@ namespace sdbench {
 extern configuration state;
 
 void RunSDBenchTest();
+void RunMultiStageBenchmark();
 
 }  // namespace sdbench
 }  // namespace benchmark
