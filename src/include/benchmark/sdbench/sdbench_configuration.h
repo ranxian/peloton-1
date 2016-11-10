@@ -138,6 +138,9 @@ class configuration {
 
   // write intensive workload ratio threshold
   double write_ratio_threshold;
+
+  // holistic indexing experiment
+  bool holistic_indexing;
 };
 
 void Usage(FILE *out);

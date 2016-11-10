@@ -1249,7 +1249,10 @@ static bool HasIndexConfigurationConverged() {
   return false;
 }
 
-void RunSDBenchTest() {
+/**
+ * @brief Do any preparation before running a benchmark.
+ */
+void BenchmarkPrepare() {
   // Setup index tuner
   index_tuner.SetAnalyzeSampleCountThreshold(
       state.analyze_sample_count_threshold);
@@ -1267,8 +1270,6 @@ void RunSDBenchTest() {
   index_tuner.SetTileGroupsIndexedPerIteration(
       state.tile_groups_indexed_per_iteration);
 
-  std::thread index_builder;
-
   // seed generator
   srand(generator_seed);
 
@@ -1279,18 +1280,6 @@ void RunSDBenchTest() {
   GeneratePredicateDistribution();
 
   CreateAndLoadTable((LayoutType)state.layout_mode);
-
-  // state.index_usage_type = INDEX_USAGE_TYPE_NEVER;
-
-  double write_ratio = state.write_ratio;
-
-  // Reset total duration
-  total_duration = 0;
-
-  // Reset query counter
-  query_itr = 0;
-
-  Timer<> index_unchanged_timer;
 
   // Start index tuner
   if (state.index_usage_type != INDEX_USAGE_TYPE_NEVER) {
@@ -1307,6 +1296,42 @@ void RunSDBenchTest() {
     // Start layout tuner
     layout_tuner.Start();
   }
+}
+
+/**
+ * @brief Do any clean up after running a benchmark.
+ */
+void BenchmarkCleanUp() {
+  // Stop index tuner
+  if (state.index_usage_type != INDEX_USAGE_TYPE_NEVER) {
+    index_tuner.Stop();
+    index_tuner.ClearTables();
+  }
+
+  if (state.layout_mode == LAYOUT_TYPE_HYBRID) {
+    layout_tuner.Stop();
+    layout_tuner.ClearTables();
+  }
+
+  // Drop Indexes
+  DropIndexes();
+
+  // Reset
+  query_itr = 0;
+
+  out.close();
+}
+
+static void SDBenchHelper() {
+  double write_ratio = state.write_ratio;
+
+  // Reset total duration
+  total_duration = 0;
+
+  // Reset query counter
+  query_itr = 0;
+
+  Timer<> index_unchanged_timer;
 
   // cache original phase length
   size_t original_phase_length = state.phase_length;
@@ -1332,7 +1357,7 @@ void RunSDBenchTest() {
 
     double rand_sample = (double)rand() / RAND_MAX;
 
-    // Do insert
+    // Do write
     if (rand_sample < write_ratio) {
       RunWrite();
     }
@@ -1350,28 +1375,24 @@ void RunSDBenchTest() {
     }
   }
 
-  // Stop index tuner
-  if (state.index_usage_type != INDEX_USAGE_TYPE_NEVER) {
-    index_tuner.Stop();
-    index_tuner.ClearTables();
-  }
-
-  if (state.layout_mode == LAYOUT_TYPE_HYBRID) {
-    layout_tuner.Stop();
-    layout_tuner.ClearTables();
-  }
-
-  // Drop Indexes
-  DropIndexes();
-
-  // Reset
-  query_itr = 0;
-
   LOG_INFO("Average phase length : %.0lf",
            (double)state.total_ops / phase_count);
   LOG_INFO("Duration : %.2lf", total_duration);
+}
 
-  out.close();
+void RunHolisticIndexingBenchmark() {
+  BenchmarkPrepare();
+
+  BenchmarkCleanUp();
+}
+
+void RunSDBenchTest() {
+  BenchmarkPrepare();
+
+  // Run the benchmark once
+  SDBenchHelper();
+
+  BenchmarkCleanUp();
 }
 
 }  // namespace sdbench

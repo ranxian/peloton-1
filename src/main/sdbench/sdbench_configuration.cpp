@@ -37,6 +37,7 @@ void Usage() {
       "   -k --scale-factor                   :  # of tile groups\n"
       "   -l --layout                         :  Layout\n"
       "   -m --max_tile_groups_indexed        :  Max tile groups indexed\n"
+      "   -n --holistic_indexing              :  Comparing with holistic indexing\n"
       "   -o --convergence                    :  Convergence\n"
       "   -p --projectivity                   :  Projectivity\n"
       "   -q --total_ops                      :  # of operations\n"
@@ -75,6 +76,7 @@ static struct option opts[] = {
     {"index_count_threshold", optional_argument, NULL, 'x'},
     {"index_utility_threshold", optional_argument, NULL, 'y'},
     {"write_ratio_threshold", optional_argument, NULL, 'z'},
+    {"holistic_indexing", optional_argument, NULL, 'n'},
     {NULL, 0, NULL, 0}};
 
 void GenerateSequence(oid_t column_count) {
@@ -361,6 +363,10 @@ static void ValidateWriteRatioThreshold(const configuration &state) {
   LOG_INFO("%s : %.2lf", "write_ratio_threshold", state.write_ratio_threshold);
 }
 
+static void ValidateHolisticIndexing(const configuration &state) {
+  LOG_INFO("holistic_indexing : %d", state.holistic_indexing);
+}
+
 void ParseArguments(int argc, char *argv[], configuration &state) {
   state.verbose = false;
 
@@ -404,18 +410,19 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   state.index_utility_threshold = 0.25;
   state.index_count_threshold = 10;
   state.write_ratio_threshold = 0.75;
+  state.holistic_indexing = false;
 
   // Parse args
   while (1) {
     int idx = 0;
     int c = getopt_long(argc, argv,
-                        "a:b:c:d:e:f:g:hi:j:k:l:m:o:p:q:r:s:t:u:v:w:x:y:z:",
+                        "a:b:c:d:e:f:g:hi:j:k:l:m:n:o:p:q:r:s:t:u:v:w:x:y:z:",
                         opts, &idx);
 
     if (c == -1) break;
 
     switch (c) {
-      // AVAILABLE FLAGS: nABCDEFGHIJKLMNOPQRSTUVWXYZ
+      // AVAILABLE FLAGS: rABCDEFGHIJKLMNOPQRSTUVWXYZ
       case 'a':
         state.attribute_count = atoi(optarg);
         break;
@@ -437,11 +444,9 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
       case 'g':
         state.tuples_per_tilegroup = atoi(optarg);
         break;
-
       case 'h':
         Usage();
         break;
-
       case 'i':
         state.duration_between_pauses = atoi(optarg);
         break;
@@ -457,7 +462,9 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
       case 'm':
         state.tile_groups_indexed_per_iteration = atoi(optarg);
         break;
-
+      case 'n':
+        state.holistic_indexing = true;
+        break;
       case 'o':
         state.convergence = atoi(optarg);
         break;
@@ -467,6 +474,7 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
       case 'q':
         state.total_ops = atol(optarg);
         break;
+        
       case 's':
         state.selectivity = atof(optarg);
         break;
@@ -482,7 +490,6 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
       case 'w':
         state.write_ratio = atof(optarg);
         break;
-
       case 'x':
         state.index_count_threshold = atoi(optarg);
         break;
@@ -537,6 +544,7 @@ void ParseArguments(int argc, char *argv[], configuration &state) {
   ValidateConvergence(state);
   ValidateQueryConvergenceThreshold(state);
   ValidateVariabilityThreshold(state);
+  ValidateHolisticIndexing(state);
 }
 
 }  // namespace sdbench
