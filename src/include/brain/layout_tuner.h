@@ -19,6 +19,7 @@
 
 #include "brain/clusterer.h"
 #include "common/types.h"
+#include "common/timer.h"
 
 namespace peloton {
 
@@ -67,6 +68,8 @@ class LayoutTuner {
 
   std::string GetColumnMapInfo(const column_map_type &column_map);
 
+  void CalculateStatistics(const std::vector<double> data, double &mean, double &sum);
+
  private:
   // Tables whose layout must be tuned
   std::vector<storage::DataTable *> tables;
@@ -104,6 +107,11 @@ class LayoutTuner {
   // FIXME: for join query, only two tiles in the tile group is not enough,
   // should be 3 = 2 for projected columns from two tables + 1 (other columns)
   oid_t tile_count = 2;
+
+  // Profile times
+  std::vector<double> update_default_partition_times_;
+  std::vector<double> transform_tg_times_;
+  oid_t tilegroup_transformed_;
 };
 
 }  // End brain namespace

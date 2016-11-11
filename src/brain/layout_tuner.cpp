@@ -14,6 +14,7 @@
 
 #include "catalog/schema.h"
 #include "common/logger.h"
+#include "common/timer.h"
 #include "storage/data_table.h"
 
 namespace peloton {
@@ -26,10 +27,24 @@ LayoutTuner& LayoutTuner::GetInstance() {
 
 LayoutTuner::LayoutTuner() {
   // Nothing to do here !
+  tilegroup_transformed_ = 0;
 }
 
 LayoutTuner::~LayoutTuner() {
-  // Nothing to do here !
+  // Print time breakdowns
+  double transform_tg_mean, update_default_partition_mean;
+  double transform_tg_sum, update_default_partition_sum;
+
+  CalculateStatistics(transform_tg_times_, transform_tg_mean, transform_tg_sum);
+  CalculateStatistics(update_default_partition_times_, update_default_partition_mean, update_default_partition_sum);
+
+  LOG_INFO("\t[LAYOUT]\tTotal transform tilegroup time\t%lf ms", transform_tg_sum);
+  LOG_INFO("\t[LAYOUT]\tTotal tile group transformed\t%d", (int)tilegroup_transformed_);
+  LOG_INFO("\t[LAYOUT]\tAverage transform tilegroup time\t%lf ms", transform_tg_sum / tilegroup_transformed_);
+  LOG_INFO("\t[LAYOUT]\tTotal update partition time\t%lf ms", update_default_partition_sum);
+  // LOG_INFO("[LAYOUT] Average transform tilegroup time: %lf ms", transform_tg_mean);
+  // LOG_INFO("[LAYOUT] Average update partition time: %lf ms", update_default_partition_mean);
+
 }
 
 void LayoutTuner::Start() {
@@ -38,6 +53,21 @@ void LayoutTuner::Start() {
 
   // Launch thread
   layout_tuner_thread = std::thread(&brain::LayoutTuner::Tune, this);
+}
+
+void LayoutTuner::CalculateStatistics(const std::vector<double> data, double &mean, double &sum) {
+  if (data.size() == 0) {
+    mean = 0.0;
+    sum = 0.0;
+  }
+
+  sum = 0.0;
+
+  for (auto stat : data) {
+    sum += stat;
+  }
+
+  mean = sum / data.size();
 }
 
 /**
@@ -107,6 +137,7 @@ void LayoutTuner::UpdateDefaultPartition(storage::DataTable* table) {
 }
 
 void LayoutTuner::Tune() {
+  Timer<std::milli> timer;
   // Continue till signal is not false
   while (layout_tuning_stop == false) {
     // Go over all tables
@@ -115,10 +146,20 @@ void LayoutTuner::Tune() {
       auto tile_group_count = table->GetTileGroupCount();
       auto tile_group_offset = rand() % tile_group_count;
 
-      table->TransformTileGroup(tile_group_offset, theta);
+      timer.Start();
+      if (table->TransformTileGroup(tile_group_offset, theta) != nullptr) {
+        tilegroup_transformed_ += 1;
+      }
+      timer.Stop();
+      transform_tg_times_.push_back(timer.GetDuration());
+      timer.Reset();
 
       // Update partitioning periodically
+      timer.Reset();
+      timer.Start();
       UpdateDefaultPartition(table);
+      timer.Stop();
+      update_default_partition_times_.push_back(timer.GetDuration());
 
       // Sleep a bit
       std::this_thread::sleep_for(std::chrono::microseconds(sleep_duration));

@@ -109,7 +109,7 @@ std::vector<std::vector<oid_t>> predicate_distribution;
 
 // Bitmap for already used predicate
 #define MAX_PREDICATE_ATTR 10
-bool predicate_used[MAX_PREDICATE_ATTR] = {};
+bool predicate_used[MAX_PREDICATE_ATTR][MAX_PREDICATE_ATTR][MAX_PREDICATE_ATTR] = {};
 
 std::size_t predicate_distribution_size = 0;
 
@@ -423,14 +423,16 @@ static void ExecuteTest(std::vector<executor::AbstractExecutor *> &executors,
   // For holistic index
   if (state.holistic_indexing) {
     for (auto index_columns: index_columns_accessed) {
-      for (auto index_column : index_columns) {
-        oid_t index_column_oid = (oid_t)index_column;
-        if (!predicate_used[index_column_oid]) {
+      if (index_columns.size() == 3) { // It should be so for moderate query
+        oid_t i = oid_t(index_columns[0]);
+        oid_t j = oid_t(index_columns[1]);
+        oid_t k = oid_t(index_columns[2]);
+        if (!predicate_used[i][j][k]) {
           // Copy the predicate column
-          CopyColumn(index_column_oid);
-          CopyColumn(index_column_oid);
-          // CopyColumn(index_column_oid);
-          predicate_used[index_column_oid] = true;
+          CopyColumn(i);
+          CopyColumn(j);
+          CopyColumn(k);
+          predicate_used[i][j][k] = true;
         }
       }
     }
