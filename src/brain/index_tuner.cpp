@@ -37,7 +37,37 @@ IndexTuner::IndexTuner() {
 }
 
 IndexTuner::~IndexTuner() {
-  // Nothing to do here !
+  // Calculate stats
+  double build_indices_mean, analyze_mean, add_indexes_mean, update_index_util_mean;
+  double build_indices_sum, analyze_sum, add_indexes_sum, update_index_util_sum;
+  CalculateStatistics(build_indices_times_, build_indices_mean, build_indices_sum);
+  CalculateStatistics(analyze_times_, analyze_mean, analyze_sum);
+  CalculateStatistics(add_indexes_times_, add_indexes_mean, add_indexes_sum);
+  CalculateStatistics(update_index_util_times_, update_index_util_mean, update_index_util_sum);
+
+  LOG_INFO("%s: %f ms", "Total build index time: ", build_indices_sum);
+  LOG_INFO("%s: %f ms", "Total analyze index time: ", analyze_sum);
+  LOG_INFO("%s: %f ms", "Total add index time: ", add_indexes_sum);
+  LOG_INFO("%s: %f ms", "Total update index util time: ", update_index_util_sum);
+  LOG_INFO("%s: %f ms", "Average build index time: ", build_indices_mean);
+  LOG_INFO("%s: %f ms", "Average analyze index time: ", analyze_mean);
+  LOG_INFO("%s: %f ms", "Average add index time: ", add_indexes_mean);
+  LOG_INFO("%s: %f ms", "Average update index util time: ", update_index_util_mean);
+}
+
+void IndexTuner::CalculateStatistics(const std::vector<double> data, double &mean, double &sum) {
+  if (data.size() == 0) {
+    mean = 0.0;
+    sum = 0.0;
+  }
+
+  sum = 0.0;
+
+  for (auto stat : data) {
+    sum += stat;
+  }
+
+  mean = sum / data.size();
 }
 
 void IndexTuner::Start() {
@@ -130,6 +160,8 @@ void IndexTuner::BuildIndex(storage::DataTable* table,
 }
 
 void IndexTuner::BuildIndices(storage::DataTable* table) {
+  Timer<std::milli> timer;
+  timer.Start();
   oid_t index_count = table->GetIndexCount();
 
   for (oid_t index_itr = 0; index_itr < index_count; index_itr++) {
@@ -142,6 +174,8 @@ void IndexTuner::BuildIndices(storage::DataTable* table) {
     // Build index
     BuildIndex(table, index);
   }
+  timer.Stop();
+  build_indices_times_.push_back(timer.GetDuration());
 }
 
 double IndexTuner::ComputeWorkloadWriteRatio(
@@ -425,6 +459,8 @@ void PrintIndexInformation(storage::DataTable* table) {
 }
 
 void IndexTuner::Analyze(storage::DataTable* table) {
+  Timer<std::milli> timer;
+  timer.Start();
   // Process all samples in table
   auto& samples = table->GetIndexSamples();
 
@@ -449,15 +485,23 @@ void IndexTuner::Analyze(storage::DataTable* table) {
   auto index_overflow = (valid_index_count > index_count_threshold);
   auto write_intensive_workload = (average_write_ratio > write_ratio_threshold);
 
+  // Skip drop table
+  timer.Stop();
+  analyze_times_.push_back(timer.GetDuration());
   if (index_overflow == true || write_intensive_workload == true) {
     DropIndexes(table);
   }
 
   // Add indexes if needed
+  timer.Start();
   AddIndexes(table, suggested_indices);
+  timer.Stop();
+  add_indexes_times_.push_back(timer.GetDuration());
 
   // Update index utility
+  timer.Start();
   UpdateIndexUtility(table, sample_frequency_entry_list);
+  update_index_util_times_.push_back(timer.GetDuration());
 
   // Display index information
   PrintIndexInformation(table);

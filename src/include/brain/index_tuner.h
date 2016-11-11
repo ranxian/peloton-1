@@ -116,6 +116,8 @@ class IndexTuner {
 
   void DropIndexes(storage::DataTable *table);
 
+  void CalculateStatistics(const std::vector<double> data, double &mean, double &sum);
+
  private:
   // Tables whose indices must be tuned
   std::vector<storage::DataTable *> tables;
@@ -165,6 +167,11 @@ class IndexTuner {
   // write intensive workload ratio threshold
   double write_ratio_threshold = 0.75;
 
+  // Profile timer
+  std::vector<double> build_indices_times_;
+  std::vector<double> analyze_times_;
+  std::vector<double> add_indexes_times_;
+  std::vector<double> update_index_util_times_;
 };
 
 }  // End brain namespace
