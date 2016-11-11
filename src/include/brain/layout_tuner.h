@@ -111,7 +111,7 @@ class LayoutTuner {
   // Profile times
   std::vector<double> update_default_partition_times_;
   std::vector<double> transform_tg_times_;
-  oid_t tilegroup_transformed_;
+  oid_t tile_groups_transformed_;
 };
 
 }  // End brain namespace

@@ -27,7 +27,7 @@ LayoutTuner& LayoutTuner::GetInstance() {
 
 LayoutTuner::LayoutTuner() {
   // Nothing to do here !
-  tilegroup_transformed_ = 0;
+  tile_groups_transformed_ = 0;
 }
 
 LayoutTuner::~LayoutTuner() {
@@ -39,12 +39,9 @@ LayoutTuner::~LayoutTuner() {
   CalculateStatistics(update_default_partition_times_, update_default_partition_mean, update_default_partition_sum);
 
   LOG_INFO("\t[LAYOUT]\tTotal transform tilegroup time\t%lf ms", transform_tg_sum);
-  LOG_INFO("\t[LAYOUT]\tTotal tile group transformed\t%d", (int)tilegroup_transformed_);
-  LOG_INFO("\t[LAYOUT]\tAverage transform tilegroup time\t%lf ms", transform_tg_sum / tilegroup_transformed_);
+  LOG_INFO("\t[LAYOUT]\tTotal tile group transformed\t%d", (int)tile_groups_transformed_);
+  LOG_INFO("\t[LAYOUT]\tAverage transform tilegroup time\t%lf ms", transform_tg_sum / tile_groups_transformed_);
   LOG_INFO("\t[LAYOUT]\tTotal update partition time\t%lf ms", update_default_partition_sum);
-  // LOG_INFO("[LAYOUT] Average transform tilegroup time: %lf ms", transform_tg_mean);
-  // LOG_INFO("[LAYOUT] Average update partition time: %lf ms", update_default_partition_mean);
-
 }
 
 void LayoutTuner::Start() {
@@ -148,7 +145,7 @@ void LayoutTuner::Tune() {
 
       timer.Start();
       if (table->TransformTileGroup(tile_group_offset, theta) != nullptr) {
-        tilegroup_transformed_ += 1;
+        tile_groups_transformed_ += 1;
       }
       timer.Stop();
       transform_tg_times_.push_back(timer.GetDuration());
